@@ -1,34 +1,16 @@
-# 치수 측정 API 서버 의존성 패키지
-
-# 웹 프레임워크
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-python-multipart==0.0.6
-websockets==12.0
-
-# 이미지 처리
-opencv-python==4.9.0.80
-numpy==1.26.3
-
-# 과학 계산 (기존 코드 호환성)
-scipy==1.11.4
-scikit-learn==1.4.0
-
-# 데이터 검증
-pydantic==2.5.3
-
-# 유틸리티
-python-dotenv==1.0.0
-qrcode==7.4.2
-pillow==10.2.0
-
-# 데이터베이스
-mysql-connector-python==9.1.0
-
-# 인증 및 보안
-python-jose[cryptography]==3.3.0  # JWT 토큰
-passlib[bcrypt]==1.7.4  # 비밀번호 해싱
-
-# HTTP 요청 (소셜 로그인)
-requests==2.31.0
-
+fastapi
+uvicorn[standard]
+python-multipart
+websockets
+opencv-python-headless
+numpy
+scipy
+scikit-learn
+pydantic
+python-dotenv
+qrcode
+pillow
+mysql-connector-python
+python-jose[cryptography]
+passlib[bcrypt]
+requests
