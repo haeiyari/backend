@@ -313,9 +313,11 @@ async def signup(request: SignupRequest):
 
     # DB 창구 열기
     try:
-        print(f"DEBUG: 1. 요청 받은 데이터 전체: {request}")
-        print(f"DEBUG: 2. 비밀번호 데이터 타입: {type(request.password)}")
-        print(f"DEBUG: 3. 비밀번호 값: {request.password}")
+        print(f"DEBUG: [1] 원본 데이터: {request}", flush=True)
+        print(f"DEBUG: [2] 비밀번호 타입: {type(request.password)}", flush=True)
+        print(f"DEBUG: [3] 비밀번호 값: {request.password}", flush=True)
+
+        safe_password = str(request.password)
 
         connection = get_db_connection() # 회원 명부를 관리하는 데이터베이스에 접속
         cursor = connection.cursor(dictionary=True)
@@ -331,7 +333,7 @@ async def signup(request: SignupRequest):
 
         # 비밀번호 암호화 (bcrypt 사용으로 변경)
         # 비밀번호를 그대로 저장하면 위험하므로, 알아볼 수 없는 문자열(해시)로 변환
-        password_hash = hash_password(request.password) #배포용 주석
+        password_hash = hash_password(safe_password)
 
         # 신규 회원 등록
         # 이름, 이메일, 암호화된 비밀번호를 DB의 users 테이블에 추가 
