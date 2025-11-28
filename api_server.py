@@ -327,7 +327,7 @@ async def signup(request: SignupRequest):
 
         # 비밀번호 암호화 (bcrypt 사용으로 변경)
         # 비밀번호를 그대로 저장하면 위험하므로, 알아볼 수 없는 문자열(해시)로 변환
-        password_hash = hash_password(request.password)
+        password_hash = hash_password(request.password) #배포용 주석
 
         # 신규 회원 등록
         # 이름, 이메일, 암호화된 비밀번호를 DB의 users 테이블에 추가 
