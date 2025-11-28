@@ -1,0 +1,140 @@
+{
+  "info": {
+    "name": "의류 치수 측정 API",
+    "description": "A4 용지 기준 의류 치수 자동 측정 API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["health"]
+        },
+        "description": "서버 상태 확인"
+      }
+    },
+    {
+      "name": "Measure Shirt",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "image",
+              "type": "file",
+              "src": "/path/to/shirt_image.jpg",
+              "description": "상의 이미지 (A4 용지 포함)"
+            },
+            {
+              "key": "clothing_type",
+              "value": "shirt",
+              "type": "text",
+              "description": "의류 타입"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8000/measure",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["measure"]
+        },
+        "description": "상의 치수 측정 (총장, 어깨, 가슴, 소매)"
+      }
+    },
+    {
+      "name": "Measure Pants",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "image",
+              "type": "file",
+              "src": "/path/to/pants_image.jpg",
+              "description": "하의 이미지 (A4 용지 포함)"
+            },
+            {
+              "key": "clothing_type",
+              "value": "pants",
+              "type": "text",
+              "description": "의류 타입"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8000/measure",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["measure"]
+        },
+        "description": "하의 치수 측정 (총장, 허리, 엉덩이, 밑위, 허벅지, 밑단)"
+      }
+    },
+    {
+      "name": "Batch Measure",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "images",
+              "type": "file",
+              "src": "/path/to/image1.jpg"
+            },
+            {
+              "key": "images",
+              "type": "file",
+              "src": "/path/to/image2.jpg"
+            },
+            {
+              "key": "clothing_types",
+              "value": "shirt,pants",
+              "type": "text",
+              "description": "각 이미지의 의류 타입 (쉼표로 구분)"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8000/measure/batch",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["measure", "batch"]
+        },
+        "description": "여러 의류 일괄 측정"
+      }
+    },
+    {
+      "name": "Get Supported Measurements",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/supported-measurements",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["supported-measurements"]
+        },
+        "description": "측정 가능한 항목 목록 조회"
+      }
+    }
+  ]
+}
+

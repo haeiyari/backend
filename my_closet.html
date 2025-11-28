@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 옷장 - 의류 치수 측정 시스템</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+            background: linear-gradient(135deg, #E3CAA5 0%, #CEAB93 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #AD8B73 0%, #8B6F5C 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .user-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-info-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info label {
+            font-weight: 600;
+            color: #5C4033;
+        }
+
+        .user-info input {
+            padding: 10px 15px;
+            border: 2px solid #E3CAA5;
+            border-radius: 8px;
+            font-size: 1em;
+            width: 120px;
+        }
+
+        .btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #AD8B73;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #8B6F5C;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #5C4033;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #3A2820;
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #AD8B73;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state h2 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: #AD8B73;
+        }
+
+        .empty-state p {
+            margin-bottom: 25px;
+            font-size: 1.1em;
+        }
+
+        .closet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .closet-item {
+            background: white;
+            border: 2px solid #E3CAA5;
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .closet-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border-color: #AD8B73;
+        }
+
+        .item-image {
+            width: 100%;
+            height: 200px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .item-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .item-image.no-image {
+            color: #ccc;
+            font-size: 3em;
+        }
+
+        .item-content {
+            padding: 20px;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .item-name {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #5C4033;
+        }
+
+        .item-category {
+            background: #AD8B73;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .item-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+
+        .delete-btn {
+            padding: 6px 12px;
+            font-size: 0.8em;
+            border: none;
+            border-radius: 6px;
+            background: #e57373;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .delete-btn:hover {
+            background: #d32f2f;
+            transform: translateY(-1px);
+        }
+
+        .item-measurements {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .measurement-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .measurement-row:last-child {
+            border-bottom: none;
+        }
+
+        .measurement-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .measurement-value {
+            font-weight: 700;
+            color: #5C4033;
+        }
+
+        .item-date {
+            text-align: center;
+            color: #999;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .closet-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .user-info {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .user-info-left {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .user-info input {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👔 내 옷장</h1>
+            <p>저장된 의류 측정 기록을 확인하세요</p>
+        </div>
+
+        <div class="content">
+            <div class="user-info">
+                <div class="user-info-left">
+                    <label for="userIdInput">사용자 ID:</label>
+                    <input type="number" id="userIdInput" value="3" min="1">
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="loadCloset()">내 옷장 불러오기</button>
+                    <button class="btn btn-secondary" onclick="goToMeasurement()">새 측정하기</button>
+                </div>
+            </div>
+
+            <div id="loadingDiv" class="loading" style="display: none;">
+                불러오는 중...
+            </div>
+
+            <div id="errorDiv" class="error" style="display: none;"></div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <h2>📭 옷장이 비어있습니다</h2>
+                <p>아직 저장된 의류가 없습니다.<br>의류를 측정하고 옷장에 추가해보세요!</p>
+                <button class="btn btn-primary" onclick="goToMeasurement()">첫 번째 의류 측정하기</button>
+            </div>
+
+            <div id="closetGrid" class="closet-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        // API 서버 주소
+        // - 로컬에서 직접 접속할 때:   http://localhost:8000
+        // - ngrok 등 외부에서 접속할 때: 현재 페이지와 같은 도메인(origin)
+        const API_URL = window.location.origin;
+
+        // 페이지 로드 시: 새로고침이면 처음 화면(index.html)으로 이동,
+        // 일반 진입이면 자동으로 옷장 불러오기
+        window.addEventListener('load', () => {
+            const navEntry = performance.getEntriesByType('navigation')[0];
+            const navType = navEntry && navEntry.type ? navEntry.type : 'navigate';
+
+            if (navType === 'reload') {
+                // 새로고침(F5, Ctrl+R 등)인 경우: 메인 화면으로 이동
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // 일반 진입(버튼 클릭 등)일 때만 자동으로 옷장 데이터를 불러옴
+            loadCloset();
+        });
+
+        async function loadCloset() {
+            const userId = parseInt(document.getElementById('userIdInput').value);
+            
+            if (!userId || userId < 1) {
+                showError('올바른 사용자 ID를 입력해주세요.');
+                return;
+            }
+
+            const loadingDiv = document.getElementById('loadingDiv');
+            const errorDiv = document.getElementById('errorDiv');
+            const emptyState = document.getElementById('emptyState');
+            const closetGrid = document.getElementById('closetGrid');
+
+            loadingDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            emptyState.style.display = 'none';
+            closetGrid.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_URL}/my-closet/${userId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`서버 오류: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                loadingDiv.style.display = 'none';
+
+                if (data.profiles.length === 0) {
+                    emptyState.style.display = 'block';
+                } else {
+                    displayClosetItems(data.profiles);
+                }
+
+            } catch (err) {
+                console.error('조회 오류:', err);
+                loadingDiv.style.display = 'none';
+                showError(`옷장을 불러올 수 없습니다: ${err.message}`);
+            }
+        }
+
+        function displayClosetItems(profiles) {
+            const closetGrid = document.getElementById('closetGrid');
+            closetGrid.innerHTML = '';
+
+            profiles.forEach(profile => {
+                const item = document.createElement('div');
+                item.className = 'closet-item';
+                
+                // 이미지 부분
+                let imageHTML = '';
+                if (profile.profile_image_url) {
+                    imageHTML = `<img src="${API_URL}${profile.profile_image_url}" alt="${profile.profile_name}">`;
+                } else {
+                    const emoji = profile.category === '상의' ? '👕' : '👖';
+                    imageHTML = `<div class="no-image">${emoji}</div>`;
+                }
+
+                // 측정값 부분
+                let measurementsHTML = '';
+                if (profile.category === '상의') {
+                    measurementsHTML = `
+                        ${profile.top_length ? `<div class="measurement-row"><span class="measurement-label">총장</span><span class="measurement-value">${profile.top_length} cm</span></div>` : ''}
+                        ${profile.top_shoulder ? `<div class="measurement-row"><span class="measurement-label">어깨 너비</span><span class="measurement-value">${profile.top_shoulder} cm</span></div>` : ''}
+                        ${profile.top_chest ? `<div class="measurement-row"><span class="measurement-label">가슴 너비</span><span class="measurement-value">${profile.top_chest} cm</span></div>` : ''}
+                        ${profile.top_sleeve ? `<div class="measurement-row"><span class="measurement-label">소매 길이</span><span class="measurement-value">${profile.top_sleeve} cm</span></div>` : ''}
+                    `;
+                } else {
+                    measurementsHTML = `
+                        ${profile.bottom_length ? `<div class="measurement-row"><span class="measurement-label">총장</span><span class="measurement-value">${profile.bottom_length} cm</span></div>` : ''}
+                        ${profile.bottom_waist ? `<div class="measurement-row"><span class="measurement-label">허리 단면</span><span class="measurement-value">${profile.bottom_waist} cm</span></div>` : ''}
+                        ${profile.bottom_hip ? `<div class="measurement-row"><span class="measurement-label">엉덩이 단면</span><span class="measurement-value">${profile.bottom_hip} cm</span></div>` : ''}
+                        ${profile.bottom_rise ? `<div class="measurement-row"><span class="measurement-label">밑위</span><span class="measurement-value">${profile.bottom_rise} cm</span></div>` : ''}
+                        ${profile.bottom_thigh ? `<div class="measurement-row"><span class="measurement-label">허벅지 단면</span><span class="measurement-value">${profile.bottom_thigh} cm</span></div>` : ''}
+                        ${profile.bottom_hem ? `<div class="measurement-row"><span class="measurement-label">밑단 단면</span><span class="measurement-value">${profile.bottom_hem} cm</span></div>` : ''}
+                    `;
+                }
+
+                item.innerHTML = `
+                    <div class="item-image">${imageHTML}</div>
+                    <div class="item-content">
+                        <div class="item-header">
+                            <div class="item-name">${profile.profile_name}</div>
+                            <div class="item-category">${profile.category}</div>
+                        </div>
+                        <div class="item-measurements">
+                            ${measurementsHTML}
+                        </div>
+                        <div class="item-date">저장일: ${profile.created_at}</div>
+                        <div class="item-actions">
+                            <button class="delete-btn" onclick="deleteProfile(${profile.profile_id})">삭제</button>
+                        </div>
+                    </div>
+                `;
+
+                closetGrid.appendChild(item);
+            });
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorDiv');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function goToMeasurement() {
+            window.location.href = 'demo_with_keypoints.html';
+        }
+
+        async function deleteProfile(profileId) {
+            if (!confirm('정말 이 항목을 삭제할까요?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/my-closet/${profileId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    const detail = errorData.detail || `서버 오류: ${response.status}`;
+                    throw new Error(detail);
+                }
+
+                // 삭제 후 목록 새로고침
+                await loadCloset();
+
+            } catch (err) {
+                console.error('삭제 오류:', err);
+                showError(`삭제에 실패했습니다: ${err.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
+

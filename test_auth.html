@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 테스트 페이지</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 5px solid #667eea;
+        }
+
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+            border: 2px solid #ddd;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result.success {
+            border-color: #4CAF50;
+            background: #e8f5e9;
+        }
+
+        .result.error {
+            border-color: #f44336;
+            background: #ffebee;
+        }
+
+        .result-title {
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .result.success .result-title {
+            color: #4CAF50;
+        }
+
+        .result.error .result-title {
+            color: #f44336;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .token-display {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            word-break: break-all;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 API 테스트 페이지</h1>
+
+        <!-- 1. 로그인 테스트 -->
+        <div class="test-section">
+            <h2>🔐 1. 로그인 테스트</h2>
+            <div class="form-group">
+                <label>이메일</label>
+                <input type="email" id="loginEmail" value="dodo46@naver.com">
+            </div>
+            <div class="form-group">
+                <label>비밀번호</label>
+                <input type="password" id="loginPassword" value="6286shj">
+            </div>
+            <button onclick="testLogin()">로그인 테스트</button>
+            <div id="loginResult" class="result"></div>
+        </div>
+
+        <!-- 2. 상품 검색 테스트 -->
+        <div class="test-section">
+            <h2>🔍 2. 상품 검색 테스트</h2>
+            <div class="form-group">
+                <label>검색 키워드</label>
+                <input type="text" id="searchKeyword" value="셔츠">
+            </div>
+            <div class="form-group">
+                <label>카테고리 (선택)</label>
+                <select id="searchCategory">
+                    <option value="">전체</option>
+                    <option value="상의">상의</option>
+                    <option value="하의">하의</option>
+                </select>
+            </div>
+            <button onclick="testSearch()">검색 테스트</button>
+            <div id="searchResult" class="result"></div>
+        </div>
+
+        <!-- 3. 비밀번호 재설정 요청 -->
+        <div class="test-section">
+            <h2>📧 3. 비밀번호 재설정 요청</h2>
+            <div class="form-group">
+                <label>이메일</label>
+                <input type="email" id="resetEmail" value="dodo46@naver.com">
+            </div>
+            <button onclick="testPasswordReset()">재설정 요청</button>
+            <div id="resetResult" class="result"></div>
+        </div>
+
+        <!-- 4. 로그아웃 테스트 -->
+        <div class="test-section">
+            <h2>🚪 4. 로그아웃 테스트</h2>
+            <p style="color: #666; margin-bottom: 15px;">먼저 로그인을 해야 합니다.</p>
+            <button onclick="testLogout()">로그아웃 테스트</button>
+            <div id="logoutResult" class="result"></div>
+        </div>
+
+        <!-- 5. 내 옷장 조회 -->
+        <div class="test-section">
+            <h2>👔 5. 내 옷장 조회</h2>
+            <div class="form-group">
+                <label>사용자 ID</label>
+                <input type="number" id="userId" value="3">
+            </div>
+            <button onclick="testMyCloset()">옷장 조회</button>
+            <div id="closetResult" class="result"></div>
+        </div>
+
+        <!-- 6. 상품 목록 조회 -->
+        <div class="test-section">
+            <h2>🛍️ 6. 상품 목록 조회</h2>
+            <div class="grid">
+                <div class="form-group">
+                    <label>페이지</label>
+                    <input type="number" id="productPage" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>페이지당 개수</label>
+                    <input type="number" id="productLimit" value="10" min="1" max="100">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>정렬 기준</label>
+                <select id="productSort">
+                    <option value="created_at">등록일</option>
+                    <option value="price">가격</option>
+                    <option value="name">이름</option>
+                </select>
+            </div>
+            <button onclick="testProductList()">목록 조회</button>
+            <div id="productListResult" class="result"></div>
+        </div>
+
+        <!-- 7. 상품 상세 조회 -->
+        <div class="test-section">
+            <h2>📦 7. 상품 상세 조회</h2>
+            <div class="form-group">
+                <label>상품 ID</label>
+                <input type="number" id="productDetailId" value="4">
+            </div>
+            <button onclick="testProductDetail()">상세 조회</button>
+            <div id="productDetailResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // API 서버 주소: 항상 현재 페이지와 같은 도메인/포트 사용
+        // - 로컬:   http://localhost:8000
+        // - ngrok: https://xxxx.ngrok-free.dev  (자동 인식)
+        const API_URL = window.location.origin;
+        let accessToken = null;
+
+        // 로그인 테스트
+        async function testLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const resultDiv = document.getElementById('loginResult');
+
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    accessToken = data.access_token;
+                    resultDiv.className = 'result show success';
+                    resultDiv.innerHTML = `
+                        <div class="result-title">✅ 로그인 성공!</div>
+                        <p><strong>사용자:</strong> ${data.user.name} (${data.user.email})</p>
+                        <div class="token-display">
+                            <strong>액세스 토큰:</strong><br>
+                            ${accessToken}
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'result show error';
+                    resultDiv.innerHTML = `
+                        <div class="result-title">❌ 로그인 실패</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <div class="result-title">❌ 오류 발생</div>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        // 상품 검색 테스트
+        async function testSearch() {
+            const keyword = document.getElementById('searchKeyword').value;
+            const category = document.getElementById('searchCategory').value;
+            const resultDiv = document.getElementById('searchResult');
+
+            try {
+                let url = `${API_URL}/products/search?keyword=${encodeURIComponent(keyword)}`;
+                if (category) {
+                    url += `&category=${encodeURIComponent(category)}`;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result show success';
+                    let productsHTML = '';
+                    data.products.forEach(product => {
+                        productsHTML += `
+                            <div style="padding: 10px; border-bottom: 1px solid #ddd;">
+                                <strong>${product.name}</strong><br>
+                                가격: ${product.price.toLocaleString()}원<br>
+                                ${product.description || ''}
+                            </div>
+                        `;
+                    });
+
+                    resultDiv.innerHTML = `
+                        <div class="result-title">✅ 검색 완료 (${data.count}개)</div>
+                        ${productsHTML}
+                        <pre style="margin-top: 15px;">${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'result show error';
+                    resultDiv.innerHTML = `
+                        <div class="result-title">❌ 검색 실패</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <div class="result-title">❌ 오류 발생</div>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        // 비밀번호 재설정 요청
+        async function testPasswordReset() {
+            const email = document.getElementById('resetEmail').value;
+            const resultDiv = document.getElementById('resetResult');
+
+            try {
+                const response = await fetch(`${API_URL}/auth/password-reset/request`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result show success';
+                    resultDiv.innerHTML = `
+                        <div class="result-title">✅ 요청 성공!</div>
+                        <p>${data.message}</p>
+                        <p style="color: #666; margin-top: 10px;">
+                            ℹ️ SendGrid가 설정되지 않았다면 서버 콘솔에서 재설정 링크를 확인할 수 있습니다.
+                        </p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'result show error';
+                    resultDiv.innerHTML = `
+                        <div class="result-title">❌ 요청 실패</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <div class="result-title">❌ 오류 발생</div>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        // 로그아웃 테스트
+        async function testLogout() {
+            const resultDiv = document.getElementById('logoutResult');
+
+            if (!accessToken) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <div class="result-title">❌ 로그인이 필요합니다</div>
+                    <p>먼저 로그인 테스트를 실행하세요.</p>
+                `;
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result show success';
+                    resultDiv.innerHTML = `
+                        <div class="result-title">✅ 로그아웃 성공!</div>
+                        <p>${data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    accessToken = null;
+                } else {
+                    resultDiv.className = 'result show error';
+                    resultDiv.innerHTML = `
+                        <div class="result-title">❌ 로그아웃 실패</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <div class="result-title">❌ 오류 발생</div>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        // 내 옷장 조회
+        async function testMyCloset() {
+            const userId = document.getElementById('userId').value;
+            const resultDiv = document.getElementById('closetResult');
+
+            try {
+                const response = await fetch(`${API_URL}/my-closet/${userId}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result show success';
+                    let profilesHTML = '';
+                    data.profiles.forEach(profile => {
+                        profilesHTML += `
+                            <div style="padding: 10px; border-bottom: 1px solid #ddd;">
+                                <strong>${profile.profile_name}</strong> (${profile.category})<br>
+                                등록일: ${profile.created_at}
+                            </div>
+                        `;
+                    });
+
+                    resultDiv.innerHTML = `
+                        <div class="result-title">✅ 조회 완료 (${data.profiles.length}개)</div>
+                        ${profilesHTML}
+                        <pre style="margin-top: 15px;">${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'result show error';
+                    resultDiv.innerHTML = `
+                        <div class="result-title">❌ 조회 실패</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <div class="result-title">❌ 오류 발생</div>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        // 상품 목록 조회
+        async function testProductList() {
+            const page = document.getElementById('productPage').value;
+            const limit = document.getElementById('productLimit').value;
+            const sortBy = document.getElementById('productSort').value;
+            const resultDiv = document.getElementById('productListResult');
+
+            try {
+                const url = `${API_URL}/products?page=${page}&limit=${limit}&sort_by=${sortBy}&order=desc`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result show success';
+                    let productsHTML = '';
+                    data.products.forEach(product => {
+                        productsHTML += `
+                            <div style="padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between;">
+                                <div>
+                                    <strong>${product.name}</strong><br>
+                                    <span style="color: #666;">${product.description || ''}</span>
+                                </div>
+                                <div style="text-align: right;">
+                                    <strong style="color: #667eea;">${product.price.toLocaleString()}원</strong><br>
+                                    <span style="color: #999; font-size: 0.9em;">재고: ${product.stock_quantity}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    const pagination = data.pagination;
+                    resultDiv.innerHTML = `
+                        <div class="result-title">✅ 조회 완료 (${data.products.length}개)</div>
+                        <div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                            <strong>페이지:</strong> ${pagination.current_page} / ${pagination.total_pages}<br>
+                            <strong>전체 상품:</strong> ${pagination.total_count}개
+                        </div>
+                        ${productsHTML}
+                        <pre style="margin-top: 15px;">${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'result show error';
+                    resultDiv.innerHTML = `
+                        <div class="result-title">❌ 조회 실패</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <div class="result-title">❌ 오류 발생</div>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        // 상품 상세 조회
+        async function testProductDetail() {
+            const productId = document.getElementById('productDetailId').value;
+            const resultDiv = document.getElementById('productDetailResult');
+
+            try {
+                const response = await fetch(`${API_URL}/products/${productId}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result show success';
+                    
+                    const product = data.product;
+                    let sizeHTML = '';
+                    data.size_options.forEach(size => {
+                        sizeHTML += `
+                            <span style="display: inline-block; padding: 5px 12px; background: #667eea; color: white; border-radius: 5px; margin: 3px;">
+                                ${size.option_name} (재고: ${size.stock_quantity})
+                            </span>
+                        `;
+                    });
+
+                    let measureHTML = '';
+                    if (data.measurements.length > 0) {
+                        data.measurements.forEach(m => {
+                            const measure = m.measurements;
+                            measureHTML += `
+                                <div style="padding: 10px; background: white; border-radius: 5px; margin-top: 10px;">
+                                    <strong>${m.size_name} 실측:</strong><br>
+                                    ${measure.category === '상의' ? 
+                                        `총장: ${measure.top_length}cm, 어깨: ${measure.top_shoulder}cm, 가슴: ${measure.top_chest}cm, 소매: ${measure.top_sleeve}cm` :
+                                        `총장: ${measure.bottom_length}cm, 허리: ${measure.bottom_waist}cm, 엉덩이: ${measure.bottom_hip}cm`
+                                    }
+                                </div>
+                            `;
+                        });
+                    }
+
+                    resultDiv.innerHTML = `
+                        <div class="result-title">✅ ${product.name}</div>
+                        <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 15px;">
+                            <p style="color: #666; margin-bottom: 10px;">${product.description || ''}</p>
+                            <p><strong>가격:</strong> <span style="color: #667eea; font-size: 1.3em;">${product.price.toLocaleString()}원</span></p>
+                            <p><strong>카테고리:</strong> ${product.category_name || '-'}</p>
+                            <p><strong>재고:</strong> ${product.stock_quantity}개</p>
+                            <div style="margin-top: 15px;">
+                                <strong>사이즈 옵션:</strong><br>
+                                ${sizeHTML || '사이즈 옵션 없음'}
+                            </div>
+                            ${measureHTML ? `<div style="margin-top: 15px;"><strong>실측 정보:</strong>${measureHTML}</div>` : ''}
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'result show error';
+                    resultDiv.innerHTML = `
+                        <div class="result-title">❌ 조회 실패</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result show error';
+                resultDiv.innerHTML = `
+                    <div class="result-title">❌ 오류 발생</div>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
+

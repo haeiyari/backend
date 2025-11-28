@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#AD8B73">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>의류 치수 촬영</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #videoContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .status-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+            z-index: 10;
+        }
+
+        .status-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .condition-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 0.95em;
+        }
+
+        .condition-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            flex-shrink: 0;
+        }
+
+        .condition-icon.checking {
+            background: #FFA500;
+            color: white;
+        }
+
+        .condition-icon.success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .condition-icon.error {
+            background: #F44336;
+            color: white;
+        }
+
+        .condition-text {
+            flex: 1;
+        }
+
+        .countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+            z-index: 20;
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        .guide-frame {
+            position: absolute;
+            border: 3px dashed #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .guide-corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #4CAF50;
+        }
+
+        .guide-corner.tl { top: -3px; left: -3px; border-right: none; border-bottom: none; }
+        .guide-corner.tr { top: -3px; right: -3px; border-left: none; border-bottom: none; }
+        .guide-corner.bl { bottom: -3px; left: -3px; border-right: none; border-top: none; }
+        .guide-corner.br { bottom: -3px; right: -3px; border-left: none; border-top: none; }
+
+        .connection-status {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            z-index: 10;
+        }
+
+        .connection-status.connected {
+            background: rgba(76, 175, 80, 0.9);
+        }
+
+        .manual-btn {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.92);
+            color: #222;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            border: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+            pointer-events: auto;
+        }
+
+        .flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 30;
+        }
+
+        .flash.active {
+            animation: flashAnimation 0.3s ease-out;
+        }
+
+        @keyframes flashAnimation {
+            0% { opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0; }
+        }
+
+        .error-message {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(244, 67, 54, 0.9);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            text-align: center;
+            z-index: 10;
+            max-width: 90%;
+        }
+
+        
+        .permission-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            color: #fff;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 40;
+            text-align: center;
+            padding: 24px;
+        }
+
+        .permission-overlay.show {
+            display: flex;
+        }
+
+        .permission-title {
+            font-weight: 800;
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+
+        .permission-desc {
+            opacity: 0.9;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .permission-btn {
+            background: #4CAF50;
+            color: #fff;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-weight: 800;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+        }
+
+    </style>
+</head>
+<body>
+    <div id="videoContainer">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+        <canvas id="overlay"></canvas>
+        
+        <div class="status-panel" id="statusPanel">
+            <div class="status-title">촬영 준비 상태</div>
+            <div class="condition-item">
+                <div class="condition-icon error" id="angleIcon"></div>
+                <div class="condition-text" id="angleText">카메라 각도 확인 중...</div>
+            </div>
+            <div class="condition-item">
+                <div class="condition-icon error" id="objectIcon"></div>
+                <div class="condition-text" id="objectText">A4 및 의류 감지 중...</div>
+            </div>
+        </div>
+
+        <div class="connection-status" id="connectionStatus">서버 연결 중...</div>
+        <div class="flash" id="flash"></div>
+        <button id="manualCapture" class="manual-btn">가이드 무시하고 촬영하기</button>
+
+        <div id="permissionOverlay" class="permission-overlay">
+            <div class="permission-title">카메라 권한이 필요합니다</div>
+            <div class="permission-desc">브라우저의 요청을 허용하고, 아래 버튼을 눌러 다시 시작해 주세요.</div>
+            <button id="retryStart" class="permission-btn">권한 허용하고 카메라 시작</button>
+        </div>
+    </div>
+
+    <script>
+        // URL에서 세션 ID 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session');
+
+        if (!sessionId) {
+            alert('세션 ID가 없습니다. QR 코드를 다시 스캔해주세요.');
+        }
+
+        // WebSocket 연결 (ngrok/localhost 자동 대응)
+        const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new WebSocket(`${wsScheme}://${window.location.host}/ws/mobile/${sessionId}`);
+        const videoContainer = document.getElementById('videoContainer');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const overlay = document.getElementById('overlay');
+        const ctx = canvas.getContext('2d');
+        const overlayCtx = overlay.getContext('2d');
+        const flash = document.getElementById('flash');
+
+        // 상태 변수
+        let captureConditions = {
+            angle: false,
+            objects: false
+        };
+        let conditionHistory = { angle: [], objects: [] };
+        let isCapturing = false;
+        let countdown = null;
+        let deviceOrientation = { alpha: 0, beta: 0, gamma: 0 };
+        let orientationLastTs = 0; // 센서 수신 여부 판단용
+        let mediaStream = null; // 현재 카메라 스트림(종료용)
+
+        // WebSocket 이벤트
+        ws.onopen = () => {
+            console.log('WebSocket 연결됨');
+            document.getElementById('connectionStatus').textContent = '노트북과 연결됨';
+            document.getElementById('connectionStatus').classList.add('connected');
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket 연결 종료');
+            document.getElementById('connectionStatus').textContent = '연결 끊김';
+            document.getElementById('connectionStatus').classList.remove('connected');
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket 오류:', error);
+        };
+
+        // 카메라 시작
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { ideal: 'environment' }, // 후면 우선
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                
+                mediaStream = stream;
+                video.srcObject = stream;
+                // 모바일 자동재생 정책 대응
+                video.muted = true;
+                video.setAttribute('muted', '');
+                video.setAttribute('playsinline', '');
+                
+                video.onloadedmetadata = async () => {
+                    try { await video.play(); } catch(e) { console.warn('video.play() error', e); }
+                    // 비디오가 재생 가능한 상태에서 캔버스/오버레이 크기 설정
+                    canvas.width = video.videoWidth || video.clientWidth;
+                    canvas.height = video.videoHeight || video.clientHeight;
+                    setOverlaySize();
+                    // 분석 시작
+                    requestAnimationFrame(analyzeFrame);
+
+                    // 재생 보장 루프: 재생이 멈춰있으면 play 재시도
+                    ensureVideoPlaying();
+                    hidePermissionOverlay();
+                };
+
+                // 1.5초 내 프레임이 없으면 권한 오버레이 노출
+                setTimeout(() => {
+                    if (!video.srcObject || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+                        showPermissionOverlay('카메라 권한을 허용해 주세요');
+                    }
+                }, 1500);
+            } catch (error) {
+                console.error('카메라 시작 실패:', error);
+                showError('카메라에 접근할 수 없습니다. 브라우저 권한에서 카메라를 허용한 후 다시 시도해주세요.');
+            }
+        }
+
+        // 카메라 정지
+        function stopCamera() {
+            try {
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(t => t.stop());
+                }
+            } catch(e) { console.warn('stopCamera error', e); }
+            mediaStream = null;
+            try { video.pause(); } catch(e) {}
+            video.srcObject = null;
+        }
+
+        // 디바이스 방향 센서
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', (event) => {
+                deviceOrientation = {
+                    alpha: event.alpha, // z축 회전 (0-360)
+                    beta: event.beta,   // x축 회전 (-180 to 180)
+                    gamma: event.gamma  // y축 회전 (-90 to 90)
+                };
+                orientationLastTs = Date.now();
+            });
+        }
+
+        // 가이드 계산용 최근 값
+        let lastEdgeRatio = 0;
+        let lastWhiteRatio = 0;
+        let lastA4Ok = false;
+        let lastClothOk = false;
+
+        // 카메라의 현재 화면을 분석하는 메인 함수
+        function analyzeFrame() {
+
+            //카메라 준비 확인
+            //비디오 데이터가 충분히 로딩되었는지(HAVE_ENOUGH_DATA) 현재 이미 촬영 중인 상태(!isCapturing)는 아닌지 확인 (준비가 안 됐으면 분석을 건너뜁니다.)
+            if (video.readyState === video.HAVE_ENOUGH_DATA && !isCapturing) {
+
+                //이미지 캡처 및 추출
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height); //현재 비디오 화면의 한 장면을 캔버스에 똑같이 그려냄
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); //getImageData를 통해 그림의 픽셀 정보(색상 값 등)를 숫자로 추출
+                
+                // 조건 검사 (각도 & 물체)
+                //추출한 이미지에서 두 가지를 검사
+                const angleOk = checkAngle(); //수평이 맞는지(Angle)
+                const objectsOk = checkObjects(imageData); //필요한 물체가 화면에 있는지(Objects)
+                
+                // 안정성 검증 (떨림 방지)
+                //손떨림 등으로 인한 오작동을 막기 위해 최근 몇 프레임 동안 조건이 계속 맞는지 확인
+                updateConditionHistory('angle', angleOk);
+                updateConditionHistory('objects', objectsOk);
+                
+                captureConditions.angle = isConditionStable('angle');
+                captureConditions.objects = isConditionStable('objects');
+                
+                //화면 오버레이 그리기
+                updateUI();
+                drawOverlay(angleOk, objectsOk);
+                
+                // 모든 조건 충족 시 자동 촬영 시작
+                if (captureConditions.angle && captureConditions.objects) { //모든 조건이 안정적으로 충족되었다면
+                    if (countdown === null) {
+                        startCountdown(); //카운트다운 시작
+                    }
+                } else { //도중에 조건이 깨진다면
+                    if (countdown !== null && countdown > 0) {
+                        stopCountdown(); //카운트다운 중지
+                    }
+                }
+                
+                // PC로 상태 전송
+                sendStatus();
+            }
+            
+            requestAnimationFrame(analyzeFrame);
+        }
+
+        // 조건 히스토리 업데이트
+        function updateConditionHistory(condition, value) {
+            conditionHistory[condition].push(value);
+            if (conditionHistory[condition].length > 7) { // 히스토리 길이 축소
+                conditionHistory[condition].shift();
+            }
+        }
+
+        // 안정성 필터 (촬영 조건이 지속적으로 맞는지 확인하는 함수)
+        function isConditionStable(condition) {
+
+            //최소 데이터 확보
+            const history = conditionHistory[condition]; //저장된 기록(History)이 너무 적으면 판단을 보류
+            if (history.length < 4) return false; //최소 4프레임 이상의 데이터가 쌓여야 분석을 시작
+
+            //70% 신뢰도 검사
+            //최근 기록 중 성공이 70% 이상이어야 최종적으로 안정적이라고 판단
+            const trueCount = history.filter(v => v).length; //
+            return trueCount >= Math.ceil(history.length * 0.7); // 70% 충족
+        }
+
+        // 각도 검사 (휴대폰이 바닥과 평행한지)
+        function checkAngle() {
+
+            //센서 데이터 수신
+            const beta = deviceOrientation.beta; //Beta(앞뒤 기울기)와
+            const gamma = deviceOrientation.gamma; //Gamma(좌우 기울기) 값을 가져옴
+            const sensorAvailable = (Date.now() - orientationLastTs) < 5000; // 또한 마지막으로 데이터를 받은 시간이 5초 이내인지 확인하여 센서가 살아있는지 체크
+
+            // 예외 처리
+            //만약 센서가 고장났거나 데이터를 지원하지 않는 기기라면 아예 촬영을 막는 대신
+            if (!sensorAvailable || beta == null || gamma == null || isNaN(beta) || isNaN(gamma)) {
+                return true; //그냥 통과(True)로 처리
+            }
+
+            // 허용 범위 설정
+            //완벽한 수평을 맞추기는 어렵기 때문에 앞뒤좌우로 45도 정도의 넉넉한 오차 범위를 허용
+            const betaThreshold = 45;   
+            const gammaThreshold = 45;  
+
+            const absBeta = Math.abs(beta); //(절대값 처리를 통해 양수로 변환)
+            const absGamma = Math.abs(gamma);
+
+            //좌표계 보정 및 판정
+            //휴대폰마다 기준 좌표(0도, 90도)가 다를 수 있기에 0도, 90도, 180도 근처인지를 모두 확인
+            const betaOk0 = absBeta < betaThreshold;                   // 0° 근처
+            const betaOk90 = Math.abs(absBeta - 90) < betaThreshold;   // 90° 근처
+            const betaOk180 = Math.abs(absBeta - 180) < betaThreshold; // 180° 근처
+
+            const isBetaOk = betaOk0 || betaOk90 || betaOk180;
+            const isGammaOk = absGamma < gammaThreshold;
+            return isBetaOk && isGammaOk; //Beta와 Gamma가 모두 허용 범위 내에 있으면 True를 반환
+        }
+
+        // 객체 인식 함수 시작
+        function checkObjects(imageData) {
+
+            //데이터 준비
+            //이미지를 수십만 개의 작은 점(픽셀) 데이터로 펼쳐 놓음
+            const data = imageData.data;
+            const W = imageData.width; //가로 크기
+            const H = imageData.height; //세로 크기도 확인
+
+            // A4 탐색 구역 설정
+            // 화면의 상단 중앙 부분만 집중적으로 검사하기로 구역을 정함
+            const a4X0 = Math.floor(W * 0.2), a4X1 = Math.floor(W * 0.8); //가로 20% ~ 80%
+            const a4Y0 = Math.floor(H * 0.05), a4Y1 = Math.floor(H * 0.35); //세로 5% ~ 35%
+            let whiteHits = 0, whiteTotal = 0;
+
+            // 흰색 픽셀 찾기
+            //설정된 구역의 점들을 하나씩 확인
+            for (let y = a4Y0; y < a4Y1; y += 3) {
+                for (let x = a4X0; x < a4X1; x += 3) {
+                    const i = (y * W + x) * 4;
+                    const r = data[i], g = data[i + 1], b = data[i + 2];
+                    const maxc = Math.max(r, g, b);
+                    const minc = Math.min(r, g, b);
+                    if (maxc > 210 && (maxc - minc) < 30) whiteHits++; //아주 밝고(maxc > 210), 색깔이 없으면(maxc - minc < 30)
+                    whiteTotal++; //흰색으로 간주하고 카운트(whiteTotal)를 올립
+                }
+            }
+
+            //흰색 비율 계산
+            //검사한 전체 면적 중에서 흰색 점이 얼마나 있었는지 비율(%)을 계산
+            const whiteRatio = whiteTotal ? whiteHits / whiteTotal : 0; // 만약 분모(whiteTotal)가 0이라면, 결과값을 0으로 처리
+
+            // 의류 탐색 구역 설정
+            // 옷은 화면의 아래쪽에 위치하기에 하단 65% 영역을 의류 검사 구역으로 설정
+            const clothY0 = Math.floor(H * 0.35);
+            let edgeHits = 0, edgeTotal = 0;
+
+            //Edge 감지
+            //옷은 바닥과 달리 주름, 패턴, 경계선이 많음
+            for (let s = 0; s < 6000; s++) { // 무작위로 6000곳을 찍어서
+                const x = Math.floor(Math.random() * (W - 2));
+                const y = clothY0 + Math.floor(Math.random() * (H - clothY0 - 1));
+                const idx = (y * W + x) * 4, next = idx + 4;
+                const diff = Math.abs(data[idx] - data[next])
+                    + Math.abs(data[idx + 1] - data[next + 1])
+                    + Math.abs(data[idx + 2] - data[next + 2]);
+                if (diff > 100) edgeHits++; //옆 픽셀과 색깔 차이(diff)가 큰지 확인합니다. 차이가 크면 '엣지(Edge)'로 침
+                edgeTotal++; //엣지 카운트(edgeTotal)를 올림
+            }
+            const edgeRatio = edgeTotal ? edgeHits / edgeTotal : 0;
+
+            // 최종 판단
+            //계산된 결과를 기준치와 비교
+            lastWhiteRatio = whiteRatio;
+            lastEdgeRatio = edgeRatio;
+            lastA4Ok = whiteRatio >= 0.15; //흰색 비율이 15% 이상이고
+            lastClothOk = edgeRatio >= 0.05; //엣지(질감) 비율이 5% 이상이면 준비 완료로 판단 
+
+            return lastA4Ok && lastClothOk;
+        }
+
+        // 오버레이 가이드 그리기
+        function drawOverlay(angleOk, objectsOk) {
+            const W = overlay.width;
+            const H = overlay.height;
+            overlayCtx.clearRect(0, 0, W, H);
+
+            // 1) 수평 가이드(기울기): 화면 중앙의 레벨 라인
+            overlayCtx.save();
+            const gammaVal = (Date.now() - orientationLastTs) < 5000 ? (deviceOrientation.gamma || 0) : 0;
+            overlayCtx.translate(W / 2, H / 2);
+            overlayCtx.rotate((-gammaVal * Math.PI) / 180);
+            overlayCtx.strokeStyle = angleOk ? '#4CAF50' : '#FFA000';
+            overlayCtx.lineWidth = 3;
+            overlayCtx.setLineDash([10, 10]);
+            overlayCtx.beginPath();
+            overlayCtx.moveTo(-W * 0.45, 0);
+            overlayCtx.lineTo(W * 0.45, 0);
+            overlayCtx.stroke();
+            overlayCtx.restore();
+
+            // 2) A4 가이드: 화면 상단 15% 영역에 A4 비율 박스
+            const a4Short = Math.min(W * 0.6, H * 0.25);
+            const a4W = a4Short;           // 짧은 변
+            const a4H = a4Short * 1.414;   // 긴 변 (√2)
+            const a4X = (W - a4W) / 2;
+            const a4Y = H * 0.08;
+            overlayCtx.strokeStyle = lastA4Ok ? '#4CAF50' : '#FFA000';
+            overlayCtx.lineWidth = 3;
+            overlayCtx.setLineDash([12, 8]);
+            overlayCtx.strokeRect(a4X, a4Y, a4W, a4H);
+
+            // 3) 의류 가이드: 화면 하단 60% 박스
+            const clothW = W * 0.8;
+            const clothH = H * 0.6;
+            const clothX = (W - clothW) / 2;
+            const clothY = H * 0.35;
+            overlayCtx.setLineDash([14, 10]);
+            overlayCtx.strokeStyle = lastClothOk ? '#4CAF50' : '#FFA000';
+            overlayCtx.strokeRect(clothX, clothY, clothW, clothH);
+
+            // 4) 보조 텍스트 (거리/구도/각도 힌트)
+            overlayCtx.setLineDash([]);
+            overlayCtx.font = 'bold 16px system-ui, -apple-system, Segoe UI';
+            overlayCtx.textAlign = 'center';
+            overlayCtx.fillStyle = '#ffffff';
+            overlayCtx.strokeStyle = 'rgba(0,0,0,0.5)';
+            overlayCtx.lineWidth = 4;
+            let tip = '';
+            if (!lastA4Ok && !lastClothOk) {
+                tip = 'A4 상단이 잘 보이게 위로, 의류 전체는 아래 박스에 맞춰주세요';
+            } else if (!lastA4Ok) {
+                tip = lastWhiteRatio < 0.08 ? 'A4가 너무 작거나 멀어요. 더 가깝게' : 'A4 4변이 프레임 안에 모두 들어오게';
+            } else if (!lastClothOk) {
+                tip = lastEdgeRatio < 0.05 ? '바지가 너무 작게 보여요. 조금 더 가까이' : '의류가 프레임에 모두 들어오게 조정';
+            } else if (!angleOk) {
+                tip = '휴대폰을 바닥과 평행하게 맞춰주세요';
+            }
+            if (tip) {
+                overlayCtx.strokeText(tip, W / 2, H - 30);
+                overlayCtx.fillText(tip, W / 2, H - 30);
+            }
+        }
+
+        // UI 업데이트
+        function updateUI() {
+            updateConditionUI('angle', captureConditions.angle, 
+                captureConditions.angle ? '✓ 카메라 각도 적합' : '⚠ 카메라를 바닥과 평행하게 유지하세요');
+            updateConditionUI('objects', captureConditions.objects,
+                captureConditions.objects ? '✓ A4 및 의류 감지됨' : '⚠ A4와 의류를 화면에 맞춰주세요');
+        }
+
+        function updateConditionUI(condition, isOk, text) {
+            const icon = document.getElementById(`${condition}Icon`);
+            const textEl = document.getElementById(`${condition}Text`);
+            
+            icon.className = 'condition-icon ' + (isOk ? 'success' : 'error');
+            icon.textContent = '';
+            textEl.textContent = text;
+        }
+
+        // 상태 전송
+        function sendStatus() {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'capture_status',
+                    conditions: captureConditions
+                }));
+            }
+        }
+
+        // 카운트다운 시작
+        function startCountdown() {
+            countdown = 2; // 카운트다운 단축
+            const countdownEl = document.createElement('div');
+            countdownEl.className = 'countdown';
+            countdownEl.id = 'countdownDisplay';
+            document.getElementById('videoContainer').appendChild(countdownEl);
+
+            let abortTimer = null;
+            const countdownInterval = setInterval(() => {
+                // 조건이 순간 깨지면 500ms 유예 후 취소
+                if (!captureConditions.angle || !captureConditions.objects) {
+                    if (!abortTimer) {
+                        abortTimer = setTimeout(() => {
+                            clearInterval(countdownInterval);
+                            countdownEl.remove();
+                            countdown = null;
+                            abortTimer = null;
+                        }, 500);
+                    }
+                    return;
+                } else if (abortTimer) {
+                    clearTimeout(abortTimer);
+                    abortTimer = null;
+                }
+
+                countdownEl.textContent = countdown;
+                countdown--;
+
+                if (countdown < 0) {
+                    clearInterval(countdownInterval);
+                    countdownEl.remove();
+                    captureImage();
+                }
+            }, 1000);
+        }
+
+        // 카운트다운 중지
+        function stopCountdown() {
+            countdown = null;
+            const countdownEl = document.getElementById('countdownDisplay');
+            if (countdownEl) countdownEl.remove();
+        }
+
+        // 촬영 프로세스 시작
+        //사용자가 버튼을 누르거나, 자동 촬영 조건이 만족되었을 때 실행되는 최종 단계의 함수
+        function captureImage() {
+
+            //중복 실행 방지
+            if (isCapturing) return; //이미 촬영 중(isCapturing)이라면 무시
+            isCapturing = true;
+            
+            // 플래시 효과 연출
+            flash.classList.add('active'); //화면을 순간적으로 하얗게 만들었다가(active)
+            setTimeout(() => flash.classList.remove('active'), 300); //0.3초 뒤에 다시 원상복구하여, 사진이 찍혔다는 느낌을 사용자에게 줌
+            
+            // 이미지 동결 및 변환
+            //움직이는 동영상(Video)을 캔버스에 그려서 정지 화면으로 만듬
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95); //또한 그림을 인터넷으로 전송할 수 있는 문자열 형태(Base64 Data URL)로 변환
+            
+            // 노트북으로 전송
+            if (ws.readyState === WebSocket.OPEN) { //포장된 이미지 데이터를 WebSocket 통로를 통해 PC로 발송
+                ws.send(JSON.stringify({
+                    type: 'image_captured', //메시지 타입은 'image_captured'을 붙여 PC가 사진임을 알 수 있게 함
+                    image: imageDataUrl,
+                    timestamp: new Date().toISOString()
+                }));
+                
+                // 성공 메시지 표시
+                //화면의 안내 문구를 촬영 완료로 변경하여 전송이 성공적으로 끝났음을 사용자에게 알려줌
+                document.getElementById('statusPanel').innerHTML = `
+                    <div class="status-title" style="color: #4CAF50;">✓ 촬영 완료!</div>
+                    <div style="text-align: center; margin-top: 10px;">
+                        이미지를 노트북으로 전송했습니다.<br>
+                        카메라를 종료했습니다. 이 페이지를 닫으셔도 됩니다.
+                    </div>
+                `;
+
+                // 장치 종료 및 마무리
+                //더 이상 카메라가 필요 없으므로
+                stopCamera(); //카메라 전원을 끄고(stopCamera)
+                const manualBtnEl = document.getElementById('manualCapture');
+                if (manualBtnEl) manualBtnEl.style.display = 'none'; //촬영 버튼도 숨김
+            }
+        }
+
+        // 오버레이 크기 조정
+        function setOverlaySize() {
+            // 컨테이너 크기에 맞춰 오버레이 리사이즈 (DPR 대응)
+            const width = videoContainer.clientWidth;
+            const height = videoContainer.clientHeight;
+            overlay.width = width;
+            overlay.height = height;
+        }
+
+        window.addEventListener('resize', setOverlaySize);
+        window.addEventListener('orientationchange', () => setTimeout(setOverlaySize, 300));
+
+        // 비디오 재생 보장: 정책/일시정지 대응
+        function ensureVideoPlaying() {
+            let attempts = 0;
+            const maxAttempts = 10;
+            const iv = setInterval(async () => {
+                attempts++;
+                // 재생 중이면 종료
+                if (!video.paused && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                    clearInterval(iv);
+                    return;
+                }
+                try { await video.play(); } catch (e) {}
+                if (attempts >= maxAttempts) clearInterval(iv);
+            }, 500);
+        }
+
+        // iOS 등에서 방향 센서 권한 요청
+        async function ensureMotionPermission() {
+            if (typeof DeviceOrientationEvent !== 'undefined' &&
+                typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const res = await DeviceOrientationEvent.requestPermission();
+                    return res === 'granted';
+                } catch (e) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function showError(msg) {
+            const el = document.createElement('div');
+            el.className = 'error-message';
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 3500);
+        }
+
+        // 수동 촬영 버튼
+        //HTML 문서 내에서 ID가 manualCapture인 요소를 찾아냄 (사용자가 누르는 촬영 버튼)
+        document.getElementById('manualCapture').addEventListener('click', () => {
+            if (!isCapturing) { //이미 촬영 중이 아니라면
+                captureImage(); //촬영 프로세스 시작
+            }
+        });
+
+        // 어떤 기기에서도 하단 UI 위로 버튼을 유지
+        const manualBtn = document.getElementById('manualCapture');
+        function updateManualBtnInset() {
+            const vv = window.visualViewport;
+            // 브라우저 UI/키보드에 가려지는 추가 하단 영역 계산
+            let extraBottom = 0;
+            if (vv) {
+                extraBottom = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+            }
+            // 안전영역(env) + 추가 하단 + 기본 여백(24px)
+            manualBtn.style.bottom = `calc(env(safe-area-inset-bottom, 0px) + ${24 + Math.round(extraBottom)}px)`;
+        }
+        updateManualBtnInset();
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', updateManualBtnInset);
+            window.visualViewport.addEventListener('scroll', updateManualBtnInset);
+        }
+        window.addEventListener('resize', updateManualBtnInset);
+        window.addEventListener('orientationchange', () => setTimeout(updateManualBtnInset, 300));
+
+        // 권한 오버레이 표시/숨김 및 재시도
+        const permissionOverlay = document.getElementById('permissionOverlay');
+        const retryStart = document.getElementById('retryStart');
+        function showPermissionOverlay(message) {
+            permissionOverlay.querySelector('.permission-title').textContent = '카메라 권한이 필요합니다';
+            permissionOverlay.querySelector('.permission-desc').textContent = message || '브라우저의 요청을 허용하고, 아래 버튼을 눌러 다시 시작해 주세요.';
+            permissionOverlay.classList.add('show');
+        }
+        function hidePermissionOverlay() {
+            permissionOverlay.classList.remove('show');
+        }
+        retryStart.addEventListener('click', async () => {
+            hidePermissionOverlay();
+            try { await ensureMotionPermission(); } catch(e) {}
+            await startCamera();
+        });
+
+        // 탭에서 복귀/가시성 변화 시 재시도
+        document.addEventListener('visibilitychange', async () => {
+            if (!document.hidden && (!video.srcObject || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA)) {
+                try { await ensureMotionPermission(); } catch(e) {}
+                await startCamera();
+            }
+        });
+
+        // 권한 요청 시도 후 즉시 카메라 시작 (QR 스캔 즉시 촬영 화면 표시)
+        (async () => {
+            try { await ensureMotionPermission(); } catch(e) {}
+            await startCamera();
+        })();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,38 @@
+# Render 배포 설정 파일 (선택적)
+# 이 파일을 사용하면 Render 대시보드에서 수동 설정할 필요가 없습니다.
+
+services:
+  - type: web
+    name: shopping-app-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api_server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      # 데이터베이스 설정은 Render에서 생성한 데이터베이스의 내부 URL 사용
+      # 또는 환경변수로 직접 설정
+      - key: DB_HOST
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: shopping_app
+      - key: SECRET_KEY
+        generateValue: true
+      - key: APP_URL
+        sync: false
+      # 소셜 로그인 설정은 환경변수로 직접 설정 필요
+      - key: KAKAO_CLIENT_ID
+        sync: false
+      - key: KAKAO_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: NAVER_CLIENT_ID
+        sync: false
+      - key: NAVER_CLIENT_SECRET
+        sync: false
+

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>카메라 측정하기</title>
+  <style>
+    #camera-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+    }
+    #video {
+      width: 80vw;
+      max-width: 400px;
+      height: 300px;
+      background: #000;
+    }
+    #capture {
+      margin-top: 10px;
+      width: 80vw;
+      max-width: 400px;
+      height: 40px;
+      font-size: 18px;
+    }
+    #photo {
+      margin-top: 10px;
+      width: 80vw;
+      max-width: 400px;
+      height: 300px;
+      object-fit: contain;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <button id="start">측정하기</button>
+  <div id="camera-container" style="display:none;">
+    <video id="video" autoplay playsinline></video>
+    <button id="capture">사진 촬영</button>
+    <img id="photo" alt="촬영된 사진" style="display:none;">
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('start');
+    const cameraContainer = document.getElementById('camera-container');
+    const video = document.getElementById('video');
+    const captureBtn = document.getElementById('capture');
+    const photo = document.getElementById('photo');
+    let stream = null;
+
+    startBtn.onclick = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        cameraContainer.style.display = 'flex';
+        startBtn.style.display = 'none';
+      } catch (err) {
+        alert('카메라 접근이 거부되었습니다.');
+      }
+    };
+
+    captureBtn.onclick = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      photo.src = canvas.toDataURL('image/png');
+      photo.style.display = 'block';
+    };
+  </script>
+</body>
+</html>

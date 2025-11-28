@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 가상환경
+venv/
+env/
+ENV/
+virtualenv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 환경 변수
+.env
+.env.local
+
+# 로그
+*.log
+logs/
+
+# 결과 이미지
+*_measure_result.jpg
+result_*.jpg
+
+# 테스트 이미지 (필요시 주석 해제)
+# test_images/
+# samples/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 업로드된 이미지
+uploaded_images/
+*.jpg
+*.png
+*.jpeg
+!assets/**/*.png
+!assets/**/*.jpg
+
+# 테스트 파일
+test_*.py
+test.py
+
+# Node modules (프론트엔드용)
+node_modules/
+package-lock.json
+
+# 기타
+*.log
+*.sql.bak

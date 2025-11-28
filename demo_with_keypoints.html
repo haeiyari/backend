@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#AD8B73">
+    <title>의류 치수 측정 (키포인트 조정 기능)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #AD8B73;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #AD8B73;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border: 3px dashed #AD8B73;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s;
+        }
+
+        .preview-image {
+            display: none;
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+        }
+
+        .preview-image.show {
+            display: block;
+        }
+
+        .upload-section:hover {
+            border-color: #3A506B;
+            background: #f0f0f5;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            padding: 15px 40px;
+            background: #AD8B73;
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: all 0.3s;
+        }
+
+        .file-label:hover {
+            background: #3A506B;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .type-selector {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .type-button {
+            padding: 15px 40px;
+            border: 2px solid #AD8B73;
+            background: white;
+            color: #AD8B73;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .type-button.active {
+            background: #AD8B73;
+            color: white;
+        }
+
+        .type-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .action-button {
+            width: 100%;
+            padding: 20px;
+            background: #AD8B73;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+
+        .action-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .action-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #AD8B73;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .keypoint-editor {
+            display: none;
+            margin-top: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+        }
+
+        .keypoint-editor.show {
+            display: block;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto 20px;
+            border: 2px solid #AD8B73;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #keypointCanvas {
+            display: block;
+            width: 100%;
+            cursor: crosshair;
+        }
+
+        .keypoint-legend {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .keypoint-legend h3 {
+            color: #AD8B73;
+            margin-bottom: 15px;
+        }
+
+        .legend-item {
+            display: inline-block;
+            margin: 5px 10px;
+            padding: 8px 15px;
+            background: #f0f0f5;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .result-card {
+            background: #AD8B73;
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .result-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .result-card .value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .result-image {
+            width: 100%;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .error {
+            background: #ff4757;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .info-box p {
+            margin: 5px 0;
+            color: #1976d2;
+        }
+
+        .a4-selector {
+            display: none;
+            margin-top: 30px;
+            background: #fff3cd;
+            border-radius: 15px;
+            padding: 30px;
+            border: 2px solid #ffc107;
+        }
+
+        .a4-selector.show {
+            display: block;
+        }
+
+        .a4-selector h3 {
+            color: #ff6b6b;
+            margin-bottom: 15px;
+        }
+
+        .a4-instruction {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .a4-instruction ol {
+            margin: 10px 0 10px 20px;
+            color: #333;
+        }
+
+        .a4-instruction li {
+            margin: 8px 0;
+        }
+
+        .a4-point-status {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .body-part-selector {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .body-part-selector h4 {
+            color: #3A506B;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .body-part-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .body-part-btn {
+            padding: 10px 20px;
+            border: 2px solid #3A506B;
+            background: white;
+            color: #3A506B;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .body-part-btn:hover {
+            background: #f0f0f5;
+            transform: translateY(-2px);
+        }
+
+        .body-part-btn.active {
+            background: #3A506B;
+            color: white;
+            box-shadow: 0 4px 12px rgba(58, 80, 107, 0.35);
+        }
+
+        .mode-indicator {
+            background: #3A506B;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* 반응형 디자인 - 모바일 및 다양한 화면 크기 대응 */
+        @media (max-width: 1024px) {
+            .container {
+                max-width: 100%;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+
+            body {
+                padding: 0;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .header p {
+                font-size: 0.95em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .upload-section {
+                padding: 25px;
+            }
+
+            .result-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+
+            .canvas-container {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.3em;
+            }
+
+            .header p {
+                font-size: 0.85em;
+            }
+
+            .content {
+                padding: 15px;
+            }
+
+            .upload-section {
+                padding: 20px;
+            }
+
+            .file-label {
+                padding: 12px 30px;
+                font-size: 1em;
+            }
+
+            .type-selector {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .type-button {
+                width: 100%;
+                padding: 12px 30px;
+            }
+
+            .action-button {
+                padding: 15px;
+                font-size: 1em;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .result-card {
+                padding: 20px;
+            }
+
+            .result-card .value {
+                font-size: 1.5em;
+            }
+
+            .keypoint-legend {
+                padding: 15px;
+            }
+
+            .legend-item {
+                font-size: 0.8em;
+                margin: 3px 5px;
+                padding: 6px 12px;
+            }
+
+            .body-part-buttons {
+                gap: 8px;
+            }
+
+            .body-part-btn {
+                padding: 8px 15px;
+                font-size: 0.85em;
+            }
+
+            .info-box {
+                padding: 12px;
+                font-size: 0.9em;
+            }
+
+            .a4-selector {
+                padding: 20px;
+            }
+
+            .a4-instruction {
+                padding: 12px;
+                font-size: 0.9em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.1em;
+            }
+
+            .header p {
+                font-size: 0.8em;
+            }
+
+            .content {
+                padding: 10px;
+            }
+
+            .upload-section {
+                padding: 15px;
+            }
+
+            .file-label {
+                padding: 10px 25px;
+                font-size: 0.9em;
+            }
+
+            .type-button {
+                padding: 10px 25px;
+                font-size: 0.9em;
+            }
+
+            .action-button {
+                padding: 12px;
+                font-size: 0.9em;
+            }
+
+            .result-card .label {
+                font-size: 0.8em;
+            }
+
+            .result-card .value {
+                font-size: 1.3em;
+            }
+
+            .legend-item {
+                font-size: 0.75em;
+                margin: 2px 3px;
+                padding: 5px 10px;
+            }
+
+            .body-part-btn {
+                padding: 7px 12px;
+                font-size: 0.8em;
+            }
+
+            .keypoint-editor h2 {
+                font-size: 1.1em;
+            }
+
+            .body-part-selector h4 {
+                font-size: 1em;
+            }
+
+            .mode-indicator {
+                padding: 10px 15px;
+                font-size: 0.85em;
+            }
+        }
+
+        /* 가로 모드 (태블릿/모바일) */
+        @media (max-width: 1024px) and (orientation: landscape) {
+            .container {
+                max-width: 100%;
+            }
+
+            .content {
+                padding: 20px 40px;
+            }
+
+            .result-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* 작은 화면에서 스크롤 최적화 */
+        @media (max-height: 600px) {
+            body {
+                padding: 0;
+            }
+
+            .header {
+                padding: 15px;
+            }
+
+            .content {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>의류 치수 측정 시스템</h1>
+            <p>자동 검출된 키포인트를 수동으로 조정하여 정확한 치수를 측정하세요</p>
+        </div>
+
+        <div class="content">
+            <div class="upload-section">
+            <p id="fileName" style="color: #AD8B73; margin-top: 10px;"></p>
+                
+                <div class="type-selector">
+                    <button class="type-button active" data-type="shirt">상의</button>
+                    <button class="type-button" data-type="pants">하의</button>
+                </div>
+
+                <img id="previewImage" class="preview-image" alt="업로드 미리보기">
+            </div>
+
+            <button id="detectButton" class="action-button" disabled>1단계: A4용지 찾기</button>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p id="loadingText">처리 중...</p>
+            </div>
+
+            <div id="error" class="error"></div>
+
+            <div id="a4Selector" class="a4-selector">
+                <h3>A4 용지를 자동으로 찾을 수 없습니다</h3>
+                <div class="a4-instruction">
+                    <p><strong>A4 용지 4개 꼭짓점을 순서대로 클릭하세요:</strong></p>
+                    <ol>
+                        <li>좌측 상단 (왼쪽 위)</li>
+                        <li>우측 상단 (오른쪽 위)</li>
+                        <li>우측 하단 (오른쪽 아래)</li>
+                        <li>좌측 하단 (왼쪽 아래)</li>
+                    </ol>
+                    <div class="a4-point-status" id="a4PointStatus">0 / 4 점 선택됨</div>
+                </div>
+
+                <div class="canvas-container">
+                    <canvas id="a4Canvas"></canvas>
+                </div>
+
+                <button id="confirmA4Button" class="action-button" disabled>A4 영역 확정 및 키포인트 검출</button>
+            </div>
+
+            <div id="keypointEditor" class="keypoint-editor">
+                <div class="info-box">
+                    <p><strong>키포인트 조정 방법:</strong></p>
+                    <p>• <strong>개별 조정:</strong> 빨간 점을 드래그하여 개별 키포인트 조정</p>
+                    <p>• <strong>부위별 조정:</strong> 아래에서 부위를 선택한 후 드래그하여 해당 부위 전체를 함께 이동</p>
+                    <p>• 조정이 완료되면 아래 '측정 시작' 버튼을 클릭하세요</p>
+                </div>
+
+                <div class="body-part-selector" id="bodyPartSelector">
+                    <h4>부위별 조정 모드</h4>
+                    <div class="mode-indicator" id="modeIndicator">개별 조정 모드 (각 키포인트를 따로 이동)</div>
+                    <div class="body-part-buttons" id="bodyPartButtons"></div>
+                </div>
+
+                <div class="keypoint-legend">
+                    <h3>키포인트 목록</h3>
+                    <div id="keypointLabels"></div>
+                </div>
+
+                
+
+                <div class="canvas-container">
+                    <canvas id="keypointCanvas"></canvas>
+                </div>
+
+                <button id="measureButton" class="action-button">2단계: 측정 시작</button>
+            </div>
+
+            <div id="results" class="results">
+            <h2 style="margin-bottom: 20px; color: #AD8B73;">측정 결과</h2>
+                <div id="resultGrid" class="result-grid"></div>
+                <img id="resultImage" class="result-image" alt="측정 결과">
+                
+                <!-- 저장 섹션 -->
+                <div id="saveSection" style="display: none; margin-top: 30px; padding: 25px; background: #f8f9fa; border-radius: 12px;">
+                    <h3 style="color: #AD8B73; margin-bottom: 20px;">내 옷장에 저장하기</h3>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; color: #5C4033; font-weight: 600;">의류 이름</label>
+                        <input type="text" id="profileNameInput" placeholder="예: 내 최애 후드티" 
+                            style="width: 100%; padding: 12px; border: 2px solid #E3CAA5; border-radius: 8px; font-size: 1em;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; color: #5C4033; font-weight: 600;">사용자 ID (임시)</label>
+                        <input type="number" id="userIdInput" placeholder="예: 3" value="3"
+                            style="width: 100%; padding: 12px; border: 2px solid #E3CAA5; border-radius: 8px; font-size: 1em;">
+                        <small style="color: #999;">* 추후 로그인 기능과 연동될 예정입니다</small>
+                    </div>
+                    <button id="saveToClosetButton" class="action-button" style="margin-top: 10px;">내 옷장에 저장</button>
+                    <div id="saveStatus" style="margin-top: 15px; padding: 10px; border-radius: 8px; display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API 서버 주소
+        // - 로컬에서 직접 열 때: http://localhost:8000
+        // - ngrok 등으로 접속할 때: 현재 페이지와 같은 도메인(예: https://xxxx.ngrok-free.dev)
+        const API_URL = window.location.origin;
+        let selectedFile = null;
+        let selectedType = 'shirt';
+        let keypointsData = null;
+        let latestMeasurementData = null;
+        let canvas, ctx;
+        let selectedPointIndex = -1;
+        let canvasScale = 1;
+        let baseImageURL = null; // 업로드한 원본 이미지 DataURL
+        
+        // 부위별 조정 관련 변수
+        let selectedBodyPart = null;
+        let bodyPartGroups = {};
+        
+        // A4 수동 선택 관련 변수
+        let a4Canvas, a4Ctx;
+        let a4Points = [];
+        let a4Image = null;
+        let a4ImageSize = null;
+        let a4CanvasScale = 1;
+
+        const fileName = document.getElementById('fileName');
+        const detectButton = document.getElementById('detectButton');
+        const measureButton = document.getElementById('measureButton');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
+        const error = document.getElementById('error');
+        const a4Selector = document.getElementById('a4Selector');
+        const a4PointStatus = document.getElementById('a4PointStatus');
+        const confirmA4Button = document.getElementById('confirmA4Button');
+        const keypointEditor = document.getElementById('keypointEditor');
+        const results = document.getElementById('results');
+        const resultGrid = document.getElementById('resultGrid');
+        const resultImage = document.getElementById('resultImage');
+        const preview = document.getElementById('previewImage');
+        const uploadSection = document.querySelector('.upload-section');
+        const typeSelector = document.querySelector('.type-selector');
+        const saveSection = document.getElementById('saveSection');
+        const saveToClosetButton = document.getElementById('saveToClosetButton');
+        const profileNameInput = document.getElementById('profileNameInput');
+        const userIdInput = document.getElementById('userIdInput');
+        const saveStatus = document.getElementById('saveStatus');
+
+        // 의류 타입 버튼
+        document.querySelectorAll('.type-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.type-button').forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+                selectedType = button.dataset.type;
+            });
+        });
+
+        // 파일 선택 기능은 제거되었습니다. 이미지는 모바일 촬영 후 자동으로 로드됩니다.
+
+        // 키포인트 검출
+        detectButton.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            loading.classList.add('show');
+            loadingText.textContent = '키포인트를 검출하고 있습니다...';
+            error.classList.remove('show');
+            keypointEditor.classList.remove('show');
+            results.classList.remove('show');
+            detectButton.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+                formData.append('clothing_type', selectedType);
+
+                const response = await fetch(`${API_URL}/detect-keypoints`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorDetail = '';
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorDetail = errorJson.detail || errorText;
+                    } catch {
+                        errorDetail = errorText;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${errorDetail}`);
+                }
+
+                keypointsData = await response.json();
+                
+                // A4 수동 선택이 필요한 경우
+                if (keypointsData.need_manual_a4) {
+                    displayA4Selector();
+                } else {
+                    // 키포인트 에디터 표시
+                    displayKeypointEditor();
+                }
+
+            } catch (err) {
+                console.error('키포인트 검출 오류:', err);
+                error.textContent = `오류: ${err.message}\n\n서버가 실행 중인지 확인하세요 (http://localhost:8000)`;
+                error.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+                detectButton.disabled = false;
+            }
+        });
+
+        // A4 수동 선택 표시
+        function displayA4Selector() {
+            a4Selector.classList.add('show');
+            a4Points = [];
+            
+            a4ImageSize = keypointsData.image_size;
+            
+            // 캔버스 설정
+            a4Canvas = document.getElementById('a4Canvas');
+            a4Ctx = a4Canvas.getContext('2d');
+            
+            a4Image = new Image();
+            a4Image.onload = () => {
+                // 캔버스 크기 설정
+                const maxWidth = 800;
+                a4CanvasScale = Math.min(maxWidth / a4ImageSize.width, 1);
+                a4Canvas.width = a4ImageSize.width * a4CanvasScale;
+                a4Canvas.height = a4ImageSize.height * a4CanvasScale;
+                
+                // 이미지 그리기
+                drawA4Canvas();
+                
+                // 클릭 이벤트 등록
+                a4Canvas.addEventListener('click', handleA4Click);
+            };
+            a4Image.src = baseImageURL;
+        }
+        
+        // A4 캔버스 그리기
+        function drawA4Canvas() {
+            a4Ctx.clearRect(0, 0, a4Canvas.width, a4Canvas.height);
+            a4Ctx.drawImage(a4Image, 0, 0, a4Canvas.width, a4Canvas.height);
+            
+            // 선택된 점들 그리기
+            a4Points.forEach((point, idx) => {
+                const x = point[0] * a4CanvasScale;
+                const y = point[1] * a4CanvasScale;
+                
+                // 점 그리기
+                a4Ctx.beginPath();
+                a4Ctx.arc(x, y, 10, 0, 2 * Math.PI);
+                a4Ctx.fillStyle = '#00ff00';
+                a4Ctx.fill();
+                a4Ctx.strokeStyle = '#ffffff';
+                a4Ctx.lineWidth = 3;
+                a4Ctx.stroke();
+                
+                // 번호 표시
+                a4Ctx.fillStyle = '#ffffff';
+                a4Ctx.font = 'bold 16px Arial';
+                a4Ctx.fillText(idx + 1, x - 6, y + 6);
+            });
+            
+            // 선택된 점들을 선으로 연결
+            if (a4Points.length > 1) {
+                a4Ctx.beginPath();
+                a4Ctx.moveTo(a4Points[0][0] * a4CanvasScale, a4Points[0][1] * a4CanvasScale);
+                for (let i = 1; i < a4Points.length; i++) {
+                    a4Ctx.lineTo(a4Points[i][0] * a4CanvasScale, a4Points[i][1] * a4CanvasScale);
+                }
+                if (a4Points.length === 4) {
+                    a4Ctx.closePath();
+                }
+                a4Ctx.strokeStyle = '#00ff00';
+                a4Ctx.lineWidth = 2;
+                a4Ctx.stroke();
+            }
+        }
+        
+        // A4 클릭 처리
+        function handleA4Click(e) {
+            if (a4Points.length >= 4) return;
+            
+            const rect = a4Canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / a4CanvasScale;
+            const y = (e.clientY - rect.top) / a4CanvasScale;
+            
+            a4Points.push([x, y]);
+            drawA4Canvas();
+            
+            // 상태 업데이트
+            a4PointStatus.textContent = `${a4Points.length} / 4 점 선택됨`;
+            
+            if (a4Points.length === 4) {
+                confirmA4Button.disabled = false;
+            }
+        }
+        
+        // A4 확정 버튼 클릭
+        confirmA4Button.addEventListener('click', async () => {
+            if (a4Points.length !== 4) return;
+            
+            loading.classList.add('show');
+            loadingText.textContent = 'A4 영역으로 키포인트를 검출하고 있습니다...';
+            a4Selector.classList.remove('show');
+            confirmA4Button.disabled = true;
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+                formData.append('clothing_type', selectedType);
+                formData.append('a4_box', JSON.stringify(a4Points));
+                
+                const response = await fetch(`${API_URL}/detect-keypoints`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorDetail = '';
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorDetail = errorJson.detail || errorText;
+                    } catch {
+                        errorDetail = errorText;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${errorDetail}`);
+                }
+                
+                keypointsData = await response.json();
+                
+                // 키포인트 에디터 표시
+                displayKeypointEditor();
+                
+            } catch (err) {
+                console.error('키포인트 검출 오류:', err);
+                error.textContent = `오류: ${err.message}`;
+                error.classList.add('show');
+                a4Selector.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+                confirmA4Button.disabled = false;
+            }
+        });
+
+        // 부위별 그룹 정의
+        function defineBodyPartGroups() {
+            if (keypointsData.type === 'shirt') {
+                // 상의 키포인트 인덱스: [목점, 밑단점, 왼쪽 어깨, 오른쪽 어깨, 왼쪽 가슴, 오른쪽 가슴, 왼쪽 소매, 오른쪽 소매]
+                bodyPartGroups = {
+                    '목/총장': [0, 1],  // 목점, 밑단점
+                    '어깨': [2, 3],  // 왼쪽 어깨, 오른쪽 어깨
+                    '가슴': [4, 5],  // 왼쪽 가슴, 오른쪽 가슴
+                    '소매': [6, 7]   // 왼쪽 소매, 오른쪽 소매
+                };
+            } else if (keypointsData.type === 'pants') {
+                // 하의 키포인트 인덱스: [바지 상단(총장거리), 왼쪽 허리, 오른쪽 허리, 왼쪽 엉덩이, 오른쪽 엉덩이, 밑위, 오른쪽 허벅지, 밑단 좌측(총장거리), 밑단 우측]
+                bodyPartGroups = {
+                    '허리': [0, 1, 2],            // 상단, 왼쪽 허리, 오른쪽 허리
+                    '엉덩이': [3, 4],             // 왼쪽 엉덩이, 오른쪽 엉덩이
+                    '허벅지/밑위': [5, 6],        // 밑위, 오른쪽 허벅지
+                    '밑단': [7, 8],               // 밑단 좌측, 밑단 우측
+                    '총장': [0, 7]                 // 총장: 상단 ↔ 밑단 좌측(총장거리)
+                };
+            }
+        }
+        
+        // 부위별 버튼 생성
+        function createBodyPartButtons() {
+            const buttonsDiv = document.getElementById('bodyPartButtons');
+            buttonsDiv.innerHTML = '';
+            
+            // "개별 조정" 버튼
+            const individualBtn = document.createElement('button');
+            individualBtn.className = 'body-part-btn active';
+            individualBtn.textContent = '개별 조정';
+            individualBtn.onclick = () => selectBodyPart(null);
+            buttonsDiv.appendChild(individualBtn);
+            
+            // 부위별 버튼
+            for (const partName in bodyPartGroups) {
+                const btn = document.createElement('button');
+                btn.className = 'body-part-btn';
+                btn.textContent = partName;
+                btn.onclick = () => selectBodyPart(partName);
+                buttonsDiv.appendChild(btn);
+            }
+        }
+        
+        // 부위 선택
+        function selectBodyPart(partName) {
+            selectedBodyPart = partName;
+            
+            // 버튼 활성화 상태 업데이트
+            document.querySelectorAll('.body-part-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // 모드 표시 업데이트
+            const modeIndicator = document.getElementById('modeIndicator');
+            if (partName === null) {
+                modeIndicator.textContent = '개별 조정 모드 (각 키포인트를 따로 이동)';
+                modeIndicator.style.background = '#3A506B';
+            } else {
+                modeIndicator.textContent = `부위별 조정 모드: ${partName} (해당 부위의 모든 키포인트를 함께 이동)`;
+                modeIndicator.style.background = '#3A506B';
+            }
+            
+            // 캔버스 다시 그리기
+            const img = new Image();
+            img.onload = () => drawCanvas(img);
+            img.src = baseImageURL;
+        }
+
+        // 키포인트 에디터 표시
+        function displayKeypointEditor() {
+            keypointEditor.classList.add('show');
+            selectedBodyPart = null;
+            
+            // 부위별 그룹 정의
+            defineBodyPartGroups();
+            
+            // 부위별 버튼 생성
+            createBodyPartButtons();
+
+            // 키포인트 라벨 표시
+            const labelsDiv = document.getElementById('keypointLabels');
+            labelsDiv.innerHTML = '';
+            keypointsData.point_labels.forEach((label, idx) => {
+                const item = document.createElement('span');
+                item.className = 'legend-item';
+                item.textContent = `${idx + 1}. ${label}`;
+                labelsDiv.appendChild(item);
+            });
+
+            // 캔버스 설정
+            canvas = document.getElementById('keypointCanvas');
+            ctx = canvas.getContext('2d');
+
+            const img = new Image();
+            img.onload = () => {
+                // 캔버스 크기 설정
+                const maxWidth = 800;
+                canvasScale = Math.min(maxWidth / keypointsData.image_size.width, 1);
+                canvas.width = keypointsData.image_size.width * canvasScale;
+                canvas.height = keypointsData.image_size.height * canvasScale;
+
+                // 이미지 및 키포인트 그리기
+                drawCanvas(img);
+
+                // 마우스 이벤트 등록
+                canvas.addEventListener('mousedown', handleMouseDown);
+                canvas.addEventListener('mousemove', handleMouseMove);
+                canvas.addEventListener('mouseup', handleMouseUp);
+            };
+            img.src = baseImageURL;
+        }
+
+        // 캔버스 그리기
+        function drawCanvas(img) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // 선택된 부위의 키포인트 인덱스
+            const selectedPartIndices = selectedBodyPart ? bodyPartGroups[selectedBodyPart] : [];
+
+            // 키포인트 그리기
+            keypointsData.keypoints.forEach((point, idx) => {
+                const x = point[0] * canvasScale;
+                const y = point[1] * canvasScale;
+
+                // 색상 결정
+                let fillColor = '#ff0000';  // 기본: 빨간색
+                if (idx === selectedPointIndex) {
+                    fillColor = '#00ff00';  // 선택된 점: 초록색
+                } else if (selectedPartIndices.includes(idx)) {
+                    fillColor = '#ff00ff';  // 선택된 부위: 자주색
+                }
+
+                // 점 그리기
+                ctx.beginPath();
+                ctx.arc(x, y, selectedPartIndices.includes(idx) ? 10 : 8, 0, 2 * Math.PI);
+                ctx.fillStyle = fillColor;
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 번호 표시
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 14px Arial';
+                ctx.fillText(idx + 1, x + 12, y - 12);
+            });
+            
+            // 선택된 부위의 키포인트들을 선으로 연결
+            if (selectedPartIndices.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(
+                    keypointsData.keypoints[selectedPartIndices[0]][0] * canvasScale,
+                    keypointsData.keypoints[selectedPartIndices[0]][1] * canvasScale
+                );
+                for (let i = 1; i < selectedPartIndices.length; i++) {
+                    const idx = selectedPartIndices[i];
+                    ctx.lineTo(
+                        keypointsData.keypoints[idx][0] * canvasScale,
+                        keypointsData.keypoints[idx][1] * canvasScale
+                    );
+                }
+                ctx.strokeStyle = '#ff00ff';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        // 마우스 다운
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left);
+            const y = (e.clientY - rect.top);
+
+            // 부위별 조정 모드인 경우
+            if (selectedBodyPart) {
+                const partIndices = bodyPartGroups[selectedBodyPart];
+                // 해당 부위의 키포인트 중 하나라도 클릭했는지 확인
+                for (const idx of partIndices) {
+                    const px = keypointsData.keypoints[idx][0] * canvasScale;
+                    const py = keypointsData.keypoints[idx][1] * canvasScale;
+                    const dist = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+                    
+                    if (dist < 20) {
+                        selectedPointIndex = idx;  // 기준점으로 사용
+                        break;
+                    }
+                }
+            } else {
+                // 개별 조정 모드: 클릭한 위치에 가까운 키포인트 찾기
+                selectedPointIndex = -1;
+                let minDist = Infinity;
+
+                keypointsData.keypoints.forEach((point, idx) => {
+                    const px = point[0] * canvasScale;
+                    const py = point[1] * canvasScale;
+                    const dist = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+                    
+                    if (dist < 20 && dist < minDist) {
+                        minDist = dist;
+                        selectedPointIndex = idx;
+                    }
+                });
+            }
+
+            if (selectedPointIndex !== -1) {
+                const img = new Image();
+                img.onload = () => drawCanvas(img);
+                img.src = `data:image/jpeg;base64,${keypointsData.preview_image}`;
+            }
+        }
+
+        // 마우스 이동
+        function handleMouseMove(e) {
+            if (selectedPointIndex === -1) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const newX = (e.clientX - rect.left) / canvasScale;
+            const newY = (e.clientY - rect.top) / canvasScale;
+
+            // 부위별 조정 모드에서도 선택된 키포인트만 이동
+            keypointsData.keypoints[selectedPointIndex] = [
+                Math.max(0, Math.min(newX, keypointsData.image_size.width)),
+                Math.max(0, Math.min(newY, keypointsData.image_size.height))
+            ];
+
+            const img = new Image();
+            img.onload = () => drawCanvas(img);
+            img.src = baseImageURL;
+        }
+
+        // 마우스 업
+        function handleMouseUp() {
+            selectedPointIndex = -1;
+        }
+
+        // 조정된 키포인트로 측정
+        measureButton.addEventListener('click', async () => {
+            if (!keypointsData) return;
+
+            loading.classList.add('show');
+            loadingText.textContent = '치수를 측정하고 있습니다...';
+            error.classList.remove('show');
+            results.classList.remove('show');
+            saveSection.style.display = 'none';
+            measureButton.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+                formData.append('clothing_type', selectedType);
+                formData.append('keypoints', JSON.stringify(keypointsData.keypoints));
+                formData.append('a4_box', JSON.stringify(keypointsData.a4_box));
+                formData.append('pixelsPerCM_w', keypointsData.pixelsPerCM_w);
+                formData.append('pixelsPerCM_h', keypointsData.pixelsPerCM_h);
+
+                const response = await fetch(`${API_URL}/measure-with-keypoints`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorDetail = '';
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorDetail = errorJson.detail || errorText;
+                    } catch {
+                        errorDetail = errorText;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${errorDetail}`);
+                }
+
+                const data = await response.json();
+                displayResults(data);
+
+            } catch (err) {
+                console.error('측정 오류:', err);
+                error.textContent = `오류: ${err.message}`;
+                error.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+                measureButton.disabled = false;
+            }
+        });
+
+        // 결과 표시
+        function displayResults(data) {
+            const measurementNames = {
+                'shirt': {
+                    'length': '총장',
+                    'shoulder': '어깨 너비',
+                    'chest': '가슴 너비',
+                    'sleeve': '소매 길이'
+                },
+                'pants': {
+                    'length': '총장',
+                    'waist': '허리 단면',
+                    'hip': '엉덩이 단면',
+                    'crotch': '밑위',
+                    'thigh': '허벅지 단면',
+                    'hem': '밑단 단면'
+                }
+            };
+
+            resultGrid.innerHTML = '';
+            const names = measurementNames[data.type];
+            
+            for (const [key, value] of Object.entries(data.measurements)) {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.innerHTML = `
+                    <div class="label">${names[key]}</div>
+                    <div class="value">${value}<span style="font-size: 0.5em;">cm</span></div>
+                `;
+                resultGrid.appendChild(card);
+            }
+
+            if (data.result_image) {
+                resultImage.src = `data:image/jpeg;base64,${data.result_image}`;
+            }
+
+            results.classList.add('show');
+            latestMeasurementData = data;
+            saveSection.style.display = 'block';
+            saveStatus.style.display = 'none';
+        }
+
+        // 내 옷장에 저장 (저장 버튼 클릭 감지)
+        //사용자가 내 옷장에 저장 버튼을 클릭했을 때 실행되는 비동기(async)
+        saveToClosetButton.addEventListener('click', async () => {
+
+            //입력값 읽기
+            //사용자가 입력한 옷 이름(profileName)과 사용자 ID(userId)를 가져옴
+            const profileName = profileNameInput.value.trim(); //이름 앞뒤의 공백은 trim()으로 제거
+            const userId = parseInt(userIdInput.value);
+
+            //유효성 검사
+            //이름이 비어있는지 확인
+            if (!profileName) {
+                saveStatus.textContent = '⚠️ 의류 이름을 입력해주세요.';
+                saveStatus.style.background = '#fff3cd';
+                saveStatus.style.color = '#856404';
+                saveStatus.style.display = 'block';
+                return;
+            }
+
+            // 사용자 ID가 잘못됐는지 확인
+            if (!userId || userId < 1) { 
+                saveStatus.textContent = '⚠️ 올바른 사용자 ID를 입력해주세요.';
+                saveStatus.style.background = '#fff3cd';
+                saveStatus.style.color = '#856404';
+                saveStatus.style.display = 'block';
+                return;
+            }
+
+            // 측정 데이터가 없는지 확인
+            if (!latestMeasurementData) {
+                saveStatus.textContent = '⚠️ 측정 결과가 없습니다.';
+                saveStatus.style.background = '#fff3cd';
+                saveStatus.style.color = '#856404';
+                saveStatus.style.display = 'block';
+                return;
+            } // 하나라도 문제가 있으면 경고 메시지를 띄우고 함수를 종료(return)
+
+            // 로딩 상태 표시
+            saveToClosetButton.disabled = true; // 저장이 진행되는 동안 버튼을 비활성화(disabled)하여 중복 클릭을 막고,
+            saveStatus.textContent = '저장 중...'; //'저장 중...'이라는 메시지를 띄움
+            saveStatus.style.background = '#d1ecf1';
+            saveStatus.style.color = '#0c5460';
+            saveStatus.style.display = 'block';
+
+            try {
+                // 이미지 파일 누락 체크
+                if (!selectedFile) {
+                    console.error("오류: 측정된 이미지 파일이 없습니다.");
+                    alert("이미지 데이터가 유실되었습니다. 다시 측정해주세요.");
+                    return;
+                }
+
+                // 데이터 포장
+                const formData = new FormData(); // 서버로 보낼 데이터들을 FormData라는 객체에 담음
+                formData.append('user_id', userId); // 사용자 ID
+                formData.append('profile_name', profileName); // 의류 이름
+                formData.append('category', selectedType === 'shirt' ? '상의' : '하의'); // 의류 종류
+                formData.append('measurements', JSON.stringify(latestMeasurementData.measurements)); // 측정 데이터
+                formData.append('image', selectedFile); // 이미지 파일
+                
+                // 서버 전송 (fetch)
+                //포장된 데이터 상자를 '/save-to-closet'이라는 주소(서버)로 발송
+                const response = await fetch(`${API_URL}/save-to-closet`, { 
+                    method: 'POST', // POST 방식은 데이터를 새로 저장할 때 사용
+                    body: formData
+                });
+
+                // 저장 완료 처리
+                //서버가 OK 라고 응답하면 성공 메시지를 보여줌
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || '저장 실패');
+                }
+
+                const result = await response.json();
+                saveStatus.textContent = '✓ 내 옷장에 저장되었습니다!';
+                saveStatus.style.background = '#d4edda';
+                saveStatus.style.color = '#155724';
+                
+                // 3초 뒤에는 입력창을 비우고 버튼을 다시 활성화하여 다음 저장을 준비
+                setTimeout(() => {
+                    profileNameInput.value = '';
+                    saveStatus.style.display = 'none';
+                    saveToClosetButton.disabled = false;
+                }, 3000);
+
+              //에러 발생 시 대처
+              //전송 중 인터넷이 끊기거나 서버 오류가 발생하면 이곳(catch)으로 옴
+            } catch (err) {
+                console.error('저장 오류:', err);
+                saveStatus.textContent = `⚠️ 저장 실패: ${err.message}`; //에러 내용을 사용자에게 알려주고
+                saveStatus.style.background = '#f8d7da';
+                saveStatus.style.color = '#721c24';
+                saveToClosetButton.disabled = false; //버튼 잠금을 풀어 다시 시도할 수 있게 함
+            }
+        });
+
+        // 모바일에서 촬영된 이미지 자동 로드
+        async function loadCapturedImage() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoMode = urlParams.get('auto');
+            
+            if (autoMode === 'true') {
+                const imageData = localStorage.getItem('capturedImage');
+                if (imageData) {
+                    // localStorage에서 이미지 제거
+                    localStorage.removeItem('capturedImage');
+                    
+                    // Base64를 Blob으로 변환
+                    const base64Data = imageData.split(',')[1];
+                    const byteCharacters = atob(base64Data);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'image/jpeg' });
+                    
+                    // File 객체 생성
+                    const file = new File([blob], 'mobile_capture.jpg', { type: 'image/jpeg' });
+                    
+                    // 파일 선택 시뮬레이션
+                    selectedFile = file;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        // 자동 로드된 이미지의 DataURL 저장(수동 A4 선택용 캔버스에 사용)
+                        baseImageURL = e.target.result;
+                        preview.src = e.target.result;
+                        preview.classList.add('show');
+                        uploadSection.classList.add('has-image');
+                        typeSelector.style.display = 'flex';
+                        fileName.textContent = '선택된 파일: mobile_capture.jpg';
+                        detectButton.disabled = false;
+                        
+                        // 알림 표시
+                        const notification = document.createElement('div');
+                        notification.style.cssText = `
+                            position: fixed;
+                            top: 20px;
+                            right: 20px;
+                            background: #4CAF50;
+                            color: white;
+                            padding: 15px 30px;
+                            border-radius: 10px;
+                            font-weight: 600;
+                            z-index: 1000;
+                            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                        `;
+                        notification.textContent = '✓ 모바일에서 촬영한 이미지를 불러왔습니다';
+                        document.body.appendChild(notification);
+                        
+                        setTimeout(() => {
+                            notification.remove();
+                        }, 3000);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    // 자동 모드인데 불러올 이미지가 없으면 시작 화면으로 복귀
+                    // (새로고침 등으로 capturedImage가 이미 소진된 경우)
+                    window.location.href = '/';
+                }
+            }
+        }
+
+        // 페이지 로드 시 서버 상태 확인
+        window.addEventListener('load', async () => {
+            // 모바일에서 촬영된 이미지 확인
+            await loadCapturedImage();
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    console.log('서버 연결 성공');
+                }
+            } catch (err) {
+                error.textContent = '서버에 연결할 수 없습니다. 서버를 실행해주세요:\npython api_server.py';
+                error.classList.add('show');
+            }
+        });
+    </script>
+</body>
+</html>
+
