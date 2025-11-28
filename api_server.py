@@ -1380,6 +1380,45 @@ async def withdraw_user(user_id: int, authorization: Optional[str] = Header(None
         logger.error(f"회원 탈퇴 처리 중 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
+# ==================== 카테고리 목록 조회 ====================
+
+@app.get("/categories")
+async def get_categories():
+    """
+    카테고리 목록 조회
+    
+    Returns:
+        전체 카테고리 목록
+    """
+    try:
+        logger.info("카테고리 목록 조회 요청")
+
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        # 필요에 따라 정렬 기준은 수정 가능 (예: sort_order 컬럼이 있는 경우)
+        cursor.execute("SELECT * FROM categories")
+        categories = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+
+        logger.info(f"카테고리 목록 조회 완료: {len(categories)}개")
+
+        return JSONResponse(content={
+            "success": True,
+            "count": len(categories),
+            "categories": jsonable_encoder(categories)
+        })
+
+    except Error as e:
+        logger.error(f"카테고리 목록 조회 DB 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {str(e)}")
+    except Exception as e:
+        logger.error(f"카테고리 목록 조회 중 오류: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
+
+
 # ==================== 2단계: 상품 검색 ====================
 
 @app.get("/products/search")
