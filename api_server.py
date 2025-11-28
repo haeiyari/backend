@@ -313,6 +313,10 @@ async def signup(request: SignupRequest):
 
     # DB 창구 열기
     try:
+        print(f"DEBUG: 들어온 비밀번호 값 -> {request.password}")
+        print(f"DEBUG: 들어온 비밀번호 타입 -> {type(request.password)}")
+        print("DEBUG: 이제 해싱을 시도합니다...")
+        
         connection = get_db_connection() # 회원 명부를 관리하는 데이터베이스에 접속
         cursor = connection.cursor(dictionary=True)
 

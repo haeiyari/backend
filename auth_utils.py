@@ -16,13 +16,30 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24시간
 # 비밀번호 재설정 토큰 유효시간
 RESET_TOKEN_EXPIRE_MINUTES = 30  # 30분
 
+def _normalize_password(password: str) -> str:
+    """
+    bcrypt는 최대 72바이트까지만 처리할 수 있으므로
+    그 이상일 경우 72바이트 기준으로 잘라서 사용합니다.
+    (서명/로그인 모두 동일한 규칙을 적용해야 합니다.)
+    """
+    # UTF-8 바이트 기준으로 자르기
+    pw_bytes = password.encode("utf-8")
+    if len(pw_bytes) > 72:
+        pw_bytes = pw_bytes[:72]
+        password = pw_bytes.decode("utf-8", errors="ignore")
+    return password
+
+
 def hash_password(password: str) -> str:
-    """비밀번호 해싱"""
-    return pwd_context.hash(password)
+    """비밀번호 해싱 (bcrypt 72바이트 제한 대응 포함)"""
+    normalized = _normalize_password(password)
+    return pwd_context.hash(normalized)
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """비밀번호 검증"""
-    return pwd_context.verify(plain_password, hashed_password)
+    """비밀번호 검증 (bcrypt 72바이트 제한 대응 포함)"""
+    normalized = _normalize_password(plain_password)
+    return pwd_context.verify(normalized, hashed_password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """JWT 액세스 토큰 생성"""
