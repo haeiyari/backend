@@ -11,10 +11,11 @@ import os
 
 # 데이터베이스 설정
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'root',  # MySQL 비밀번호를 입력하세요
-    'database': 'shopping_app',
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'port': int(os.getenv('DB_PORT', 3306)),  # 포트 추가 필수!
+    'user': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', 'root'),
+    'database': os.getenv('DB_NAME', 'shopping_app'),
     'charset': 'utf8mb4',
     'collation': 'utf8mb4_unicode_ci'
 }

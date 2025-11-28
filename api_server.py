@@ -75,6 +75,7 @@ measurement_service = MeasurementService() # measurement_service 클래스의 �
 # MySQL 데이터베이스 연결 설정 (환경변수 사용)
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
+    'port': int(os.getenv('DB_PORT', 3306)), 
     'user': os.getenv('DB_USER', 'root'),
     'password': os.getenv('DB_PASSWORD', 'root'),
     'database': os.getenv('DB_NAME', 'shopping_app'),
