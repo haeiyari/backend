@@ -18,6 +18,7 @@ import base64
 import os
 from datetime import datetime, timedelta
 import hashlib
+from fastapi.openapi.utils import get_openapi
 
 from dotenv import load_dotenv
 
@@ -52,6 +53,33 @@ app = FastAPI( # FastAPI 호출하여 'app' 이라는 이름의 메인 앱 객�
     description="A4 용지 기준으로 의류 치수를 자동 측정하는 API 서비스", # 앱 설명
     version="1.0.0" # 앱 버전
 )
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    openapi_schema = get_openapi(
+        title="의류 치수 측정 API",
+        version="1.0.0",
+        description="A4 용지 기준으로 의류 치수를 자동 측정하는 API 서비스",
+        routes=app.routes,
+    )
+    
+    # ▼▼▼ [Authorize] 버튼을 만드는 핵심 코드 ▼▼▼
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        }
+    }
+    # 모든 API에 자물쇠 아이콘 표시
+    openapi_schema["security"] = [{"BearerAuth": []}]
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 # CORS(Cross-origin Resource Sharing) 미들웨어 설정
 app.add_middleware( # 앱 객체에 CORS 설정을 추가하는 메서드
