@@ -96,7 +96,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # 현재 파일(api_server.py)이 있는 위치를 기준으로 'assets' 폴더를 찾습니다.
 base_dir = os.path.dirname(os.path.abspath(__file__))
-assets_path = os.path.join(base_dir, "assets")
+assets_path = os.path.join(base_dir, "assets", "images")
 
 # 혹시 폴더가 없으면 서버가 죽지 않게, 빈 폴더라도 만들어줍니다.
 if not os.path.exists(assets_path):
