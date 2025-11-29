@@ -65,7 +65,7 @@ def custom_openapi():
         routes=app.routes,
     )
     
-    # ▼▼▼ [Authorize] 버튼을 만드는 핵심 코드 ▼▼▼
+    # [Authorize] 버튼을 만드는 핵심 코드
     openapi_schema["components"]["securitySchemes"] = {
         "BearerAuth": {
             "type": "http",
@@ -95,7 +95,7 @@ UPLOAD_DIR = "uploaded_images"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # 업로드된 이미지 파일 제공을 위한 Static Files 마운트
-app.mount("/uploaded_images", StaticFiles(directory="uploaded_images"), name="uploaded_images")
+app.mount("/images", StaticFiles(directory="images"), name="images")
 
 # 서비스 클래스 인스턴스 생성 (치수 측정 서비스 객체 생성)
 measurement_service = MeasurementService() # measurement_service 클래스의 인스턴스를 생성
