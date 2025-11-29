@@ -94,8 +94,16 @@ app.add_middleware( # 앱 객체에 CORS 설정을 추가하는 메서드
 UPLOAD_DIR = "uploaded_images"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# 업로드된 이미지 파일 제공을 위한 Static Files 마운트
-app.mount("/images", StaticFiles(directory="images"), name="images")
+# 현재 파일(api_server.py)이 있는 위치를 기준으로 'assets' 폴더를 찾습니다.
+base_dir = os.path.dirname(os.path.abspath(__file__))
+assets_path = os.path.join(base_dir, "assets")
+
+# 혹시 폴더가 없으면 서버가 죽지 않게, 빈 폴더라도 만들어줍니다.
+if not os.path.exists(assets_path):
+    os.makedirs(assets_path)
+
+# 이제 안전하게 연결합니다.
+app.mount("/images", StaticFiles(directory=assets_path), name="images")
 
 # 서비스 클래스 인스턴스 생성 (치수 측정 서비스 객체 생성)
 measurement_service = MeasurementService() # measurement_service 클래스의 인스턴스를 생성
