@@ -1011,7 +1011,7 @@ async def get_kakao_login_url():
     """
     client_id = os.getenv("KAKAO_CLIENT_ID", "")
     redirect_uri = os.getenv(
-        "KAKAO_REDIRECT_URI", "http://localhost:8000/oauth/kakao/callback"
+        "KAKAO_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/kakao/callback"
     )
 
     if not client_id:
@@ -1037,7 +1037,7 @@ async def get_google_login_url():
     """
     client_id = os.getenv("GOOGLE_CLIENT_ID", "")
     redirect_uri = os.getenv(
-        "GOOGLE_REDIRECT_URI", "http://localhost:8000/oauth/google/callback"
+        "GOOGLE_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/google/callback"
     )
 
     if not client_id:
@@ -1064,7 +1064,7 @@ async def get_naver_login_url():
     """
     client_id = os.getenv("NAVER_CLIENT_ID", "")
     redirect_uri = os.getenv(
-        "NAVER_REDIRECT_URI", "http://localhost:8000/oauth/naver/callback"
+        "NAVER_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/naver/callback"
     )
 
     if not client_id:
@@ -1105,7 +1105,7 @@ async def social_login(request: SocialLoginRequest):
             # redirect_uri를 요청 값이 있으면 그걸 쓰고,
             # 없으면 .env에 설정된 KAKAO_REDIRECT_URI 또는 기본값 사용
             redirect_uri = request.redirect_uri or os.getenv(
-                "KAKAO_REDIRECT_URI", "http://localhost:8000/oauth/kakao/callback"
+                "KAKAO_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/kakao/callback"
             )
             access_token = kakao_auth.get_access_token(request.code, redirect_uri)
             if not access_token:
@@ -1113,7 +1113,7 @@ async def social_login(request: SocialLoginRequest):
             user_info = kakao_auth.get_user_info(access_token)
         elif provider == "google":
             redirect_uri = request.redirect_uri or os.getenv(
-                "GOOGLE_REDIRECT_URI", "http://localhost:8000/oauth/google/callback"
+                "GOOGLE_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/google/callback"
             )
             access_token = google_auth.get_access_token(request.code, redirect_uri)
             if not access_token:
@@ -1121,7 +1121,7 @@ async def social_login(request: SocialLoginRequest):
             user_info = google_auth.get_user_info(access_token)
         elif provider == "naver":
             redirect_uri = request.redirect_uri or os.getenv(
-                "NAVER_REDIRECT_URI", "http://localhost:8000/oauth/naver/callback"
+                "NAVER_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/naver/callback"
             )
             access_token = naver_auth.get_access_token(request.code, redirect_uri)
             if not access_token:
@@ -1288,7 +1288,7 @@ async def request_password_reset(request: PasswordResetRequest):
         reset_token = create_reset_token(request.email)
         
         # 3. 이메일 발송
-        app_url = os.getenv("APP_URL", "http://localhost:8000")
+        app_url = os.getenv("APP_URL", "https://backend-z01u.onrender.com")
         email_sent = send_password_reset_email(request.email, reset_token, app_url)
         
         if not email_sent:
