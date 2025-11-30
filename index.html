@@ -287,10 +287,6 @@
         </div>
 
         <button class="start-button" id="startButton">시작하기</button>
-        
-        <a href="my_closet.html" class="start-button" style="margin-top: 20px; background: linear-gradient(135deg, #5C4033 0%, #3A2820 100%);">
-            내 옷장 보기 👔
-        </a>
 
         <div id="qrSection" class="qr-section">
             <div class="qr-title"> 모바일로 촬영하기</div>
@@ -318,7 +314,7 @@
         let ws = null;
         let sessionId = null;
 
-        // 시작하기 버튼 클릭
+        // 시작하기 버튼 클릭 (수동 진입용 – 기본은 자동 진입)
         document.getElementById('startButton').addEventListener('click', async () => {
             document.getElementById('startButton').style.display = 'none';
             // QR 표시 단계부터는 상단 정렬로 전환
@@ -370,6 +366,26 @@
                 document.getElementById('statusMessage').className = 'status-message info';
             }
         }
+
+        // A 화면 없이 페이지 진입 시 바로 B 화면(QR 영역) 보이도록 자동 실행
+        window.addEventListener('load', async () => {
+            const startButton = document.getElementById('startButton');
+            if (startButton) {
+                startButton.style.display = 'none';
+            }
+
+            const containerEl = document.querySelector('.container');
+            if (containerEl) {
+                containerEl.classList.remove('only-start');
+            }
+
+            const qrSection = document.getElementById('qrSection');
+            if (qrSection) {
+                qrSection.classList.add('active');
+            }
+
+            await initMobileMode();
+        });
 
         // WebSocket 연결 시작
         function connectWebSocket() { //실시간 통신을 시작하는 함수로 이 함수가 호출되면 PC는 서버에 전용 회선을 요청
