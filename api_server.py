@@ -1083,6 +1083,426 @@ async def get_naver_login_url():
 
     return {"login_url": login_url}
 
+
+# ==================== 소셜 로그인 콜백 엔드포인트 ====================
+
+@app.get("/oauth/kakao/callback")
+async def kakao_callback(code: str = None, error: str = None):
+    """
+    카카오 OAuth 콜백 엔드포인트
+    카카오에서 인증 후 이 URL로 리다이렉트됩니다.
+    """
+    try:
+        logger.info("=" * 50)
+        logger.info("카카오 콜백 엔드포인트 호출됨")
+        logger.info(f"받은 code: {code[:20] if code else None}..." if code else "code 없음")
+        logger.info(f"받은 error: {error}")
+        logger.info("=" * 50)
+        
+        if error:
+            logger.error(f"카카오 로그인 오류: {error}")
+            return HTMLResponse(
+                content=f"""
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>로그인 실패</title>
+                    </head>
+                    <body style="font-family: Arial; text-align: center; padding: 50px;">
+                        <h2>로그인 실패</h2>
+                        <p>카카오 로그인 중 오류가 발생했습니다: {error}</p>
+                        <button onclick="window.close()">창 닫기</button>
+                    </body>
+                </html>
+                """,
+                status_code=400
+            )
+        
+        if not code:
+            logger.error("인증 코드가 없습니다.")
+            raise HTTPException(status_code=400, detail="인증 코드가 없습니다.")
+        
+        # 카카오 액세스 토큰 발급
+        redirect_uri = os.getenv(
+            "KAKAO_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/kakao/callback"
+        )
+        logger.info(f"토큰 발급 시도 - redirect_uri: {redirect_uri}")
+        access_token = kakao_auth.get_access_token(code, redirect_uri)
+        
+        if not access_token:
+            logger.error("카카오 액세스 토큰 발급 실패")
+            raise HTTPException(status_code=400, detail="카카오 토큰 발급 실패")
+        
+        logger.info("✅ 카카오 액세스 토큰 발급 성공")
+        
+        # 사용자 정보 조회
+        user_info = kakao_auth.get_user_info(access_token)
+        if not user_info:
+            logger.error("카카오 사용자 정보 조회 실패")
+            raise HTTPException(status_code=400, detail="사용자 정보 조회 실패")
+        
+        logger.info(f"✅ 카카오 사용자 정보 조회 성공: {user_info.get('name', 'Unknown')}")
+        
+        # 이메일이 없는 경우 임시 이메일 생성
+        email = user_info.get("email")
+        if not email:
+            social_id = user_info.get("id", "unknown")
+            email = f"kakao_{social_id}@no-email.local"
+            logger.info(f"이메일 없음 - 임시 이메일 생성: {email}")
+        
+        # DB 연결 및 사용자 확인/생성
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        cursor.execute(
+            "SELECT * FROM users WHERE email = %s AND social_provider = 'kakao'",
+            (email,)
+        )
+        user = cursor.fetchone()
+        
+        if not user:
+            # 신규 사용자 등록
+            logger.info(f"신규 사용자 등록 중: {email}")
+            cursor.execute(
+                """
+                INSERT INTO users (email, name, social_provider, social_id, created_at)
+                VALUES (%s, %s, 'kakao', %s, NOW())
+                """,
+                (email, user_info.get("name", "카카오 사용자"), user_info.get("id"))
+            )
+            connection.commit()
+            user_id = cursor.lastrowid
+            
+            cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+            user = cursor.fetchone()
+            logger.info(f"✅ 신규 사용자 등록 완료 - user_id: {user_id}")
+        else:
+            logger.info(f"✅ 기존 사용자 로그인 - user_id: {user['user_id']}")
+        
+        cursor.close()
+        connection.close()
+        
+        # JWT 토큰 생성
+        jwt_token = create_access_token({"user_id": user["user_id"], "email": user["email"]})
+        logger.info(f"✅ JWT 토큰 생성 완료")
+        logger.info("=" * 50)
+        logger.info(f"🎉 카카오 로그인 성공! 사용자: {user['name']} (user_id: {user['user_id']})")
+        logger.info("=" * 50)
+        
+        # 프론트엔드로 토큰 전달 (HTML + JavaScript)
+        return HTMLResponse(
+            content=f"""
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>로그인 처리 중...</title>
+                </head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>로그인 성공!</h2>
+                    <p>{user['name']}님, 환영합니다.</p>
+                    <p>잠시 후 메인 페이지로 이동합니다...</p>
+                    <script>
+                        // 토큰을 localStorage에 저장
+                        localStorage.setItem('access_token', '{jwt_token}');
+                        localStorage.setItem('user', JSON.stringify({jsonable_encoder(user)}));
+                        
+                        // 메인 페이지로 이동
+                        setTimeout(() => {{
+                            window.location.href = '/';
+                        }}, 2000);
+                    </script>
+                </body>
+            </html>
+            """
+        )
+        
+    except Exception as e:
+        logger.error(f"카카오 콜백 처리 오류: {str(e)}")
+        return HTMLResponse(
+            content=f"""
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>로그인 실패</title>
+                </head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>로그인 실패</h2>
+                    <p>오류: {str(e)}</p>
+                    <button onclick="window.location.href='/'">메인으로 돌아가기</button>
+                </body>
+            </html>
+            """,
+            status_code=500
+        )
+
+
+@app.get("/oauth/google/callback")
+async def google_callback(code: str = None, error: str = None):
+    """
+    구글 OAuth 콜백 엔드포인트
+    구글에서 인증 후 이 URL로 리다이렉트됩니다.
+    """
+    try:
+        logger.info("=" * 50)
+        logger.info("구글 콜백 엔드포인트 호출됨")
+        logger.info(f"받은 code: {code[:20] if code else None}..." if code else "code 없음")
+        logger.info(f"받은 error: {error}")
+        logger.info("=" * 50)
+        
+        if error:
+            logger.error(f"구글 로그인 오류: {error}")
+            return HTMLResponse(
+                content=f"""
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>로그인 실패</title>
+                    </head>
+                    <body style="font-family: Arial; text-align: center; padding: 50px;">
+                        <h2>로그인 실패</h2>
+                        <p>구글 로그인 중 오류가 발생했습니다: {error}</p>
+                        <button onclick="window.close()">창 닫기</button>
+                    </body>
+                </html>
+                """,
+                status_code=400
+            )
+        
+        if not code:
+            raise HTTPException(status_code=400, detail="인증 코드가 없습니다.")
+        
+        # 구글 액세스 토큰 발급
+        redirect_uri = os.getenv(
+            "GOOGLE_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/google/callback"
+        )
+        access_token = google_auth.get_access_token(code, redirect_uri)
+        
+        if not access_token:
+            raise HTTPException(status_code=400, detail="구글 토큰 발급 실패")
+        
+        # 사용자 정보 조회
+        user_info = google_auth.get_user_info(access_token)
+        if not user_info:
+            raise HTTPException(status_code=400, detail="사용자 정보 조회 실패")
+        
+        # 이메일이 없는 경우 임시 이메일 생성
+        email = user_info.get("email")
+        if not email:
+            social_id = user_info.get("id", "unknown")
+            email = f"google_{social_id}@no-email.local"
+        
+        # DB 연결 및 사용자 확인/생성
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        cursor.execute(
+            "SELECT * FROM users WHERE email = %s AND social_provider = 'google'",
+            (email,)
+        )
+        user = cursor.fetchone()
+        
+        if not user:
+            # 신규 사용자 등록
+            cursor.execute(
+                """
+                INSERT INTO users (email, name, social_provider, social_id, created_at)
+                VALUES (%s, %s, 'google', %s, NOW())
+                """,
+                (email, user_info.get("name", "구글 사용자"), user_info.get("id"))
+            )
+            connection.commit()
+            user_id = cursor.lastrowid
+            
+            cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+            user = cursor.fetchone()
+        
+        cursor.close()
+        connection.close()
+        
+        # JWT 토큰 생성
+        jwt_token = create_access_token({"user_id": user["user_id"], "email": user["email"]})
+        
+        # 프론트엔드로 토큰 전달 (HTML + JavaScript)
+        return HTMLResponse(
+            content=f"""
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>로그인 처리 중...</title>
+                </head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>로그인 성공!</h2>
+                    <p>{user['name']}님, 환영합니다.</p>
+                    <p>잠시 후 메인 페이지로 이동합니다...</p>
+                    <script>
+                        // 토큰을 localStorage에 저장
+                        localStorage.setItem('access_token', '{jwt_token}');
+                        localStorage.setItem('user', JSON.stringify({jsonable_encoder(user)}));
+                        
+                        // 메인 페이지로 이동
+                        setTimeout(() => {{
+                            window.location.href = '/';
+                        }}, 2000);
+                    </script>
+                </body>
+            </html>
+            """
+        )
+        
+    except Exception as e:
+        logger.error(f"구글 콜백 처리 오류: {str(e)}")
+        return HTMLResponse(
+            content=f"""
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>로그인 실패</title>
+                </head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>로그인 실패</h2>
+                    <p>오류: {str(e)}</p>
+                    <button onclick="window.location.href='/'">메인으로 돌아가기</button>
+                </body>
+            </html>
+            """,
+            status_code=500
+        )
+
+
+@app.get("/oauth/naver/callback")
+async def naver_callback(code: str = None, state: str = None, error: str = None):
+    """
+    네이버 OAuth 콜백 엔드포인트
+    네이버에서 인증 후 이 URL로 리다이렉트됩니다.
+    """
+    try:
+        logger.info("=" * 50)
+        logger.info("네이버 콜백 엔드포인트 호출됨")
+        logger.info(f"받은 code: {code[:20] if code else None}..." if code else "code 없음")
+        logger.info(f"받은 state: {state}")
+        logger.info(f"받은 error: {error}")
+        logger.info("=" * 50)
+        
+        if error:
+            logger.error(f"네이버 로그인 오류: {error}")
+            return HTMLResponse(
+                content=f"""
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>로그인 실패</title>
+                    </head>
+                    <body style="font-family: Arial; text-align: center; padding: 50px;">
+                        <h2>로그인 실패</h2>
+                        <p>네이버 로그인 중 오류가 발생했습니다: {error}</p>
+                        <button onclick="window.close()">창 닫기</button>
+                    </body>
+                </html>
+                """,
+                status_code=400
+            )
+        
+        if not code:
+            raise HTTPException(status_code=400, detail="인증 코드가 없습니다.")
+        
+        # 네이버 액세스 토큰 발급
+        redirect_uri = os.getenv(
+            "NAVER_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/naver/callback"
+        )
+        access_token = naver_auth.get_access_token(code, redirect_uri)
+        
+        if not access_token:
+            raise HTTPException(status_code=400, detail="네이버 토큰 발급 실패")
+        
+        # 사용자 정보 조회
+        user_info = naver_auth.get_user_info(access_token)
+        if not user_info:
+            raise HTTPException(status_code=400, detail="사용자 정보 조회 실패")
+        
+        # 이메일이 없는 경우 임시 이메일 생성
+        email = user_info.get("email")
+        if not email:
+            social_id = user_info.get("id", "unknown")
+            email = f"naver_{social_id}@no-email.local"
+        
+        # DB 연결 및 사용자 확인/생성
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        cursor.execute(
+            "SELECT * FROM users WHERE email = %s AND social_provider = 'naver'",
+            (email,)
+        )
+        user = cursor.fetchone()
+        
+        if not user:
+            # 신규 사용자 등록
+            cursor.execute(
+                """
+                INSERT INTO users (email, name, social_provider, social_id, created_at)
+                VALUES (%s, %s, 'naver', %s, NOW())
+                """,
+                (email, user_info.get("name", "네이버 사용자"), user_info.get("id"))
+            )
+            connection.commit()
+            user_id = cursor.lastrowid
+            
+            cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+            user = cursor.fetchone()
+        
+        cursor.close()
+        connection.close()
+        
+        # JWT 토큰 생성
+        jwt_token = create_access_token({"user_id": user["user_id"], "email": user["email"]})
+        
+        # 프론트엔드로 토큰 전달 (HTML + JavaScript)
+        return HTMLResponse(
+            content=f"""
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>로그인 처리 중...</title>
+                </head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>로그인 성공!</h2>
+                    <p>{user['name']}님, 환영합니다.</p>
+                    <p>잠시 후 메인 페이지로 이동합니다...</p>
+                    <script>
+                        // 토큰을 localStorage에 저장
+                        localStorage.setItem('access_token', '{jwt_token}');
+                        localStorage.setItem('user', JSON.stringify({jsonable_encoder(user)}));
+                        
+                        // 메인 페이지로 이동
+                        setTimeout(() => {{
+                            window.location.href = '/';
+                        }}, 2000);
+                    </script>
+                </body>
+            </html>
+            """
+        )
+        
+    except Exception as e:
+        logger.error(f"네이버 콜백 처리 오류: {str(e)}")
+        return HTMLResponse(
+            content=f"""
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>로그인 실패</title>
+                </head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>로그인 실패</h2>
+                    <p>오류: {str(e)}</p>
+                    <button onclick="window.location.href='/'">메인으로 돌아가기</button>
+                </body>
+            </html>
+            """,
+            status_code=500
+        )
+
+
 # ==================== 1단계: 소셜 로그인 ====================
 
 @app.post("/auth/social-login")
