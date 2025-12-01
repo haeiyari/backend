@@ -702,12 +702,8 @@
                         <input type="text" id="profileNameInput" placeholder="예: 내 최애 후드티" 
                             style="width: 100%; padding: 12px; border: 2px solid #E3CAA5; border-radius: 8px; font-size: 1em;">
                     </div>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 8px; color: #5C4033; font-weight: 600;">사용자 ID (임시)</label>
-                        <input type="number" id="userIdInput" placeholder="예: 3" value="3"
-                            style="width: 100%; padding: 12px; border: 2px solid #E3CAA5; border-radius: 8px; font-size: 1em;">
-                        <small style="color: #999;">* 추후 로그인 기능과 연동될 예정입니다</small>
-                    </div>
+                    <!-- 사용자 ID 입력칸은 UI에서는 숨기고, 추후 로그인 연동 시 다시 사용할 수 있도록 hidden 필드로만 유지 -->
+                    <input type="hidden" id="userIdInput" value="3">
                     <button id="saveToClosetButton" class="action-button" style="margin-top: 10px;">내 옷장에 저장</button>
                     <div id="saveStatus" style="margin-top: 15px; padding: 10px; border-radius: 8px; display: none;"></div>
                 </div>
@@ -1369,15 +1365,15 @@
                 }
 
                 const result = await response.json();
-                saveStatus.textContent = '✓ 내 옷장에 저장되었습니다!';
+                
+                saveStatus.textContent = '✓ 내 옷장에 저장 완료! (3초 후 가이드 이동)'; // 메시지 변경
                 saveStatus.style.background = '#d4edda';
                 saveStatus.style.color = '#155724';
                 
-                // 3초 뒤에는 입력창을 비우고 버튼을 다시 활성화하여 다음 저장을 준비
+                // 3초 뒤에 '가이드 화면'으로 이동 (저장 버튼 비활성화 해제는 생략)
                 setTimeout(() => {
-                    profileNameInput.value = '';
-                    saveStatus.style.display = 'none';
-                    saveToClosetButton.disabled = false;
+                    // 입력창 초기화는 생략하고, 바로 가이드 화면으로 이동합니다.
+                    window.location.href = 'guide.html'; // <--- 이 줄이 핵심입니다!
                 }, 3000);
 
               //에러 발생 시 대처

@@ -1210,21 +1210,19 @@ async def kakao_callback(code: str = None, error: str = None):
             <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>로그인 처리 중...</title>
+                    <title>로그인 성공</title>
                 </head>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>로그인 성공!</h2>
-                    <p>{user['name']}님, 환영합니다.</p>
-                    <p>잠시 후 메인 페이지로 이동합니다...</p>
+                <body>
                     <script>
-                        // 토큰을 localStorage에 저장
+                        // 1. 토큰 저장
                         localStorage.setItem('access_token', '{jwt_token}');
-                        localStorage.setItem('user', JSON.stringify({jsonable_encoder(user)}));
                         
-                        // 메인 페이지로 이동
-                        setTimeout(() => {{
-                            window.location.href = '/';
-                        }}, 2000);
+                        // 2. 사용자 정보 저장 (한글 깨짐 방지 처리)
+                        const userData = {json.dumps(user_data, ensure_ascii=False)};
+                        localStorage.setItem('user', JSON.stringify(userData));
+                        
+                        // 3. 홈 화면(home.html)으로 즉시 이동
+                        window.location.href = 'home.html'; 
                     </script>
                 </body>
             </html>
@@ -1351,21 +1349,19 @@ async def google_callback(code: str = None, error: str = None):
             <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>로그인 처리 중...</title>
+                    <title>로그인 성공</title>
                 </head>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>로그인 성공!</h2>
-                    <p>{user['name']}님, 환영합니다.</p>
-                    <p>잠시 후 메인 페이지로 이동합니다...</p>
+                <body>
                     <script>
-                        // 토큰을 localStorage에 저장
+                        // 1. 토큰 저장
                         localStorage.setItem('access_token', '{jwt_token}');
-                        localStorage.setItem('user', JSON.stringify({jsonable_encoder(user)}));
                         
-                        // 메인 페이지로 이동
-                        setTimeout(() => {{
-                            window.location.href = '/';
-                        }}, 2000);
+                        // 2. 사용자 정보 저장 (한글 깨짐 방지 처리)
+                        const userData = {json.dumps(user_data, ensure_ascii=False)};
+                        localStorage.setItem('user', JSON.stringify(userData));
+                        
+                        // 3. 홈 화면(home.html)으로 즉시 이동
+                        window.location.href = 'home.html'; 
                     </script>
                 </body>
             </html>
@@ -1493,21 +1489,19 @@ async def naver_callback(code: str = None, state: str = None, error: str = None)
             <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>로그인 처리 중...</title>
+                    <title>로그인 성공</title>
                 </head>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>로그인 성공!</h2>
-                    <p>{user['name']}님, 환영합니다.</p>
-                    <p>잠시 후 메인 페이지로 이동합니다...</p>
+                <body>
                     <script>
-                        // 토큰을 localStorage에 저장
+                        // 1. 토큰 저장
                         localStorage.setItem('access_token', '{jwt_token}');
-                        localStorage.setItem('user', JSON.stringify({jsonable_encoder(user)}));
                         
-                        // 메인 페이지로 이동
-                        setTimeout(() => {{
-                            window.location.href = '/';
-                        }}, 2000);
+                        // 2. 사용자 정보 저장 (한글 깨짐 방지 처리)
+                        const userData = {json.dumps(user_data, ensure_ascii=False)};
+                        localStorage.setItem('user', JSON.stringify(userData));
+                        
+                        // 3. 홈 화면(home.html)으로 즉시 이동
+                        window.location.href = 'home.html'; 
                     </script>
                 </body>
             </html>
