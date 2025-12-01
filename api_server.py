@@ -19,8 +19,22 @@ import os
 from datetime import datetime, timedelta
 import hashlib
 from fastapi.openapi.utils import get_openapi
-
+import numpy as np
 from dotenv import load_dotenv
+
+# [추가된 함수] NumPy 데이터를 일반 파이썬 데이터로 변환해주는 청소기 함수
+def make_serializable(obj):
+    if isinstance(obj, (np.integer, np.int64)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float32, np.float64)):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {k: make_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [make_serializable(v) for v in obj]
+    return obj
 
 # 현재 파일 기준 베이스 디렉토리 (어디서 실행해도 HTML/환경변수 경로가 안전하게 열리도록)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -697,7 +711,8 @@ async def measure_with_keypoints(
         
         logger.info(f"측정 완료 - {len(result.get('measurements', {}))}개 항목 측정됨") # 성공 시, 최종 측정값을 로그로 남김
         
-        return JSONResponse(content=result) # 최종 결과를 반환환
+        return JSONResponse(content=make_serializable(result))
+
     # 6. 예외 처리
     except json.JSONDecodeError: # keypoints나 a4_box가 잘못된 텍스트(JSON) 형식일 때 발생하는 오류를 처리
         raise HTTPException(status_code=400, detail="keypoints 또는 a4_box의 JSON 형식이 올바르지 않습니다.")
@@ -1183,11 +1198,11 @@ async def kakao_callback(code: str = None, error: str = None):
         connection.close()
         
         # JWT 토큰 생성
-        jwt_token = create_access_token({"user_id": user["user_id"], "email": user["email"]})
-        logger.info(f"✅ JWT 토큰 생성 완료")
-        logger.info("=" * 50)
-        logger.info(f"🎉 카카오 로그인 성공! 사용자: {user['name']} (user_id: {user['user_id']})")
-        logger.info("=" * 50)
+        jwt_token = create_access_token({
+                "user_id": user["id"], 
+                "email": user["email"]
+            })
+        logger.info(f"🎉 로그인 성공! 사용자: {user.get('name')} (id: {user['id']})")
         
         # 프론트엔드로 토큰 전달 (HTML + JavaScript)
         return HTMLResponse(
@@ -1323,8 +1338,12 @@ async def google_callback(code: str = None, error: str = None):
         cursor.close()
         connection.close()
         
-        # JWT 토큰 생성
-        jwt_token = create_access_token({"user_id": user["user_id"], "email": user["email"]})
+       # JWT 토큰 생성
+        jwt_token = create_access_token({
+                "user_id": user["id"], 
+                "email": user["email"]
+            })
+        logger.info(f"🎉 로그인 성공! 사용자: {user.get('name')} (id: {user['id']})")
         
         # 프론트엔드로 토큰 전달 (HTML + JavaScript)
         return HTMLResponse(
@@ -1462,7 +1481,11 @@ async def naver_callback(code: str = None, state: str = None, error: str = None)
         connection.close()
         
         # JWT 토큰 생성
-        jwt_token = create_access_token({"user_id": user["user_id"], "email": user["email"]})
+        jwt_token = create_access_token({
+                "user_id": user["id"], 
+                "email": user["email"]
+            })
+        logger.info(f"🎉 로그인 성공! 사용자: {user.get('name')} (id: {user['id']})")
         
         # 프론트엔드로 토큰 전달 (HTML + JavaScript)
         return HTMLResponse(
@@ -1640,8 +1663,12 @@ async def social_login(request: SocialLoginRequest):
         cursor.close()
         connection.close()
         
-        # 4. JWT 토큰 생성
-        jwt_token = create_access_token(data={"sub": user_data["email"], "user_id": user_id})
+        # JWT 토큰 생성
+        jwt_token = create_access_token({
+                "user_id": user["id"], 
+                "email": user["email"]
+            })
+        logger.info(f"🎉 로그인 성공! 사용자: {user.get('name')} (id: {user['id']})")
         
         return JSONResponse(content={
             "success": True,

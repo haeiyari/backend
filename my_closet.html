@@ -55,13 +55,12 @@
             margin-bottom: 30px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center; /* 버튼 영역을 중앙 정렬 */
         }
 
+        /* 사용자 ID 입력 영역은 DOM에는 남겨두되 화면에서는 숨김 */
         .user-info-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
+            display: none;
         }
 
         .user-info label {
@@ -290,7 +289,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>👔 내 옷장</h1>
+            <h1>내 옷장</h1>
             <p>저장된 의류 측정 기록을 확인하세요</p>
         </div>
 
