@@ -1121,29 +1121,22 @@ async def kakao_callback(code: str = None, error: str = None):
         
         if error:
             logger.error(f"카카오 로그인 오류: {error}")
-            # 프론트엔드로 토큰 전달 (HTML + JavaScript)
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>로그인 성공</title>
-                </head>
-                <body>
-                    <script>
-                        // 1. 토큰 및 사용자 정보 저장
-                        localStorage.setItem('access_token', '{jwt_token}');
-                        const userData = {json.dumps(user_data, ensure_ascii=False)};
-                        localStorage.setItem('user', JSON.stringify(userData));
-                        
-                        // 2. [핵심] 사용자의 로컬 서버 주소로 이동!
-                        // (누가 접속하든 자기 컴퓨터의 5500번 포트로 가라고 명령합니다)
-                        window.location.href = 'http://127.0.0.1:5500/home.html'; 
-                    </script>
-                </body>
-            </html>
-            """
-        )
+            return HTMLResponse(
+                content=f"""
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>로그인 실패</title>
+                    </head>
+                    <body style="font-family: Arial; text-align: center; padding: 50px;">
+                        <h2>로그인 실패</h2>
+                        <p>카카오 로그인 중 오류가 발생했습니다: {error}</p>
+                        <button onclick="window.close()">창 닫기</button>
+                    </body>
+                </html>
+                """,
+                status_code=400
+            )
         
         if not code:
             logger.error("인증 코드가 없습니다.")
@@ -1215,12 +1208,13 @@ async def kakao_callback(code: str = None, error: str = None):
             "email": user["email"]
         }
         
-        # JWT 토큰 생성
         jwt_token = create_access_token({
-                "user_id": user["id"], 
-                "email": user["email"]
+                "user_id": user_data["user_id"], 
+                "email": user_data["email"]
             })
-        logger.info(f"🎉 로그인 성공! 사용자: {user.get('name')} (id: {user['id']})")
+        
+        # 로그 출력도 user_data를 쓰세요
+        logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
         # 프론트엔드로 토큰 전달 (HTML + JavaScript)
         return HTMLResponse(
@@ -1282,29 +1276,22 @@ async def google_callback(code: str = None, error: str = None):
         
         if error:
             logger.error(f"구글 로그인 오류: {error}")
-            # 프론트엔드로 토큰 전달 (HTML + JavaScript)
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>로그인 성공</title>
-                </head>
-                <body>
-                    <script>
-                        // 1. 토큰 및 사용자 정보 저장
-                        localStorage.setItem('access_token', '{jwt_token}');
-                        const userData = {json.dumps(user_data, ensure_ascii=False)};
-                        localStorage.setItem('user', JSON.stringify(userData));
-                        
-                        // 2. [핵심] 사용자의 로컬 서버 주소로 이동!
-                        // (누가 접속하든 자기 컴퓨터의 5500번 포트로 가라고 명령합니다)
-                        window.location.href = 'http://127.0.0.1:5500/home.html'; 
-                    </script>
-                </body>
-            </html>
-            """
-        )
+            return HTMLResponse(
+                content=f"""
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>로그인 실패</title>
+                    </head>
+                    <body style="font-family: Arial; text-align: center; padding: 50px;">
+                        <h2>로그인 실패</h2>
+                        <p>구글 로그인 중 오류가 발생했습니다: {error}</p>
+                        <button onclick="window.close()">창 닫기</button>
+                    </body>
+                </html>
+                """,
+                status_code=400
+            )
         
         if not code:
             raise HTTPException(status_code=400, detail="인증 코드가 없습니다.")
@@ -1367,12 +1354,13 @@ async def google_callback(code: str = None, error: str = None):
             "email": user["email"]
         }
         
-       # JWT 토큰 생성
         jwt_token = create_access_token({
-                "user_id": user["id"], 
-                "email": user["email"]
+                "user_id": user_data["user_id"], 
+                "email": user_data["email"]
             })
-        logger.info(f"🎉 로그인 성공! 사용자: {user.get('name')} (id: {user['id']})")
+        
+        # 로그 출력도 user_data를 쓰세요
+        logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
         # 프론트엔드로 토큰 전달 (HTML + JavaScript)
         return HTMLResponse(
@@ -1522,10 +1510,10 @@ async def naver_callback(code: str = None, state: str = None, error: str = None)
         
         # JWT 토큰 생성
         jwt_token = create_access_token({
-                "user_id": user["id"], 
-                "email": user["email"]
+                "user_id": user_data["user_id"], 
+                "email": user_data["email"]
             })
-        logger.info(f"🎉 로그인 성공! 사용자: {user.get('name')} (id: {user['id']})")
+        logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
         # 프론트엔드로 토큰 전달 (HTML + JavaScript)
         return HTMLResponse(
@@ -1703,10 +1691,10 @@ async def social_login(request: SocialLoginRequest):
         
         # JWT 토큰 생성
         jwt_token = create_access_token({
-                "user_id": user["id"], 
-                "email": user["email"]
+                "user_id": user_data["user_id"], 
+                "email": user_data["email"]
             })
-        logger.info(f"🎉 로그인 성공! 사용자: {user.get('name')} (id: {user['id']})")
+        logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
         return JSONResponse(content={
             "success": True,
