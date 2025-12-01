@@ -1121,22 +1121,29 @@ async def kakao_callback(code: str = None, error: str = None):
         
         if error:
             logger.error(f"카카오 로그인 오류: {error}")
-            return HTMLResponse(
-                content=f"""
-                <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>로그인 실패</title>
-                    </head>
-                    <body style="font-family: Arial; text-align: center; padding: 50px;">
-                        <h2>로그인 실패</h2>
-                        <p>카카오 로그인 중 오류가 발생했습니다: {error}</p>
-                        <button onclick="window.close()">창 닫기</button>
-                    </body>
-                </html>
-                """,
-                status_code=400
-            )
+            # 프론트엔드로 토큰 전달 (HTML + JavaScript)
+        return HTMLResponse(
+            content=f"""
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>로그인 성공</title>
+                </head>
+                <body>
+                    <script>
+                        // 1. 토큰 및 사용자 정보 저장
+                        localStorage.setItem('access_token', '{jwt_token}');
+                        const userData = {json.dumps(user_data, ensure_ascii=False)};
+                        localStorage.setItem('user', JSON.stringify(userData));
+                        
+                        // 2. [핵심] 사용자의 로컬 서버 주소로 이동!
+                        // (누가 접속하든 자기 컴퓨터의 5500번 포트로 가라고 명령합니다)
+                        window.location.href = 'http://127.0.0.1:5500/home.html'; 
+                    </script>
+                </body>
+            </html>
+            """
+        )
         
         if not code:
             logger.error("인증 코드가 없습니다.")
@@ -1275,22 +1282,29 @@ async def google_callback(code: str = None, error: str = None):
         
         if error:
             logger.error(f"구글 로그인 오류: {error}")
-            return HTMLResponse(
-                content=f"""
-                <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>로그인 실패</title>
-                    </head>
-                    <body style="font-family: Arial; text-align: center; padding: 50px;">
-                        <h2>로그인 실패</h2>
-                        <p>구글 로그인 중 오류가 발생했습니다: {error}</p>
-                        <button onclick="window.close()">창 닫기</button>
-                    </body>
-                </html>
-                """,
-                status_code=400
-            )
+            # 프론트엔드로 토큰 전달 (HTML + JavaScript)
+        return HTMLResponse(
+            content=f"""
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>로그인 성공</title>
+                </head>
+                <body>
+                    <script>
+                        // 1. 토큰 및 사용자 정보 저장
+                        localStorage.setItem('access_token', '{jwt_token}');
+                        const userData = {json.dumps(user_data, ensure_ascii=False)};
+                        localStorage.setItem('user', JSON.stringify(userData));
+                        
+                        // 2. [핵심] 사용자의 로컬 서버 주소로 이동!
+                        // (누가 접속하든 자기 컴퓨터의 5500번 포트로 가라고 명령합니다)
+                        window.location.href = 'http://127.0.0.1:5500/home.html'; 
+                    </script>
+                </body>
+            </html>
+            """
+        )
         
         if not code:
             raise HTTPException(status_code=400, detail="인증 코드가 없습니다.")
@@ -1387,21 +1401,28 @@ async def google_callback(code: str = None, error: str = None):
         
     except Exception as e:
         logger.error(f"구글 콜백 처리 오류: {str(e)}")
+        # 프론트엔드로 토큰 전달 (HTML + JavaScript)
         return HTMLResponse(
             content=f"""
             <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>로그인 실패</title>
+                    <title>로그인 성공</title>
                 </head>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>로그인 실패</h2>
-                    <p>오류: {str(e)}</p>
-                    <button onclick="window.location.href='/'">메인으로 돌아가기</button>
+                <body>
+                    <script>
+                        // 1. 토큰 및 사용자 정보 저장
+                        localStorage.setItem('access_token', '{jwt_token}');
+                        const userData = {json.dumps(user_data, ensure_ascii=False)};
+                        localStorage.setItem('user', JSON.stringify(userData));
+                        
+                        // 2. [핵심] 사용자의 로컬 서버 주소로 이동!
+                        // (누가 접속하든 자기 컴퓨터의 5500번 포트로 가라고 명령합니다)
+                        window.location.href = 'http://127.0.0.1:5500/home.html'; 
+                    </script>
                 </body>
             </html>
-            """,
-            status_code=500
+            """
         )
 
 
