@@ -104,20 +104,25 @@ app.add_middleware( # 앱 객체에 CORS 설정을 추가하는 메서드
     allow_headers=["*"], # 모든 HTTP 요청 헤더를 허용 (예: 쿠키, 인증 헤더 등)
 )
 
-# 이미지 저장 디렉토리 (Static Files 마운트보다 먼저 생성)
+# 이미지 저장 디렉토리 (업로드용)
 UPLOAD_DIR = "uploaded_images"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# 현재 파일(api_server.py)이 있는 위치를 기준으로 'assets' 폴더를 찾습니다.
+# 정적 자원(샘플 이미지 등)이 들어있는 assets 경로
 base_dir = os.path.dirname(os.path.abspath(__file__))
 assets_path = os.path.join(base_dir, "assets", "images")
 
-# 혹시 폴더가 없으면 서버가 죽지 않게, 빈 폴더라도 만들어줍니다.
+# 폴더가 없으면 서버가 죽지 않게, 빈 폴더라도 만들어줍니다.
 if not os.path.exists(assets_path):
     os.makedirs(assets_path)
 
-# 이제 안전하게 연결합니다.
+# 정적 파일 마운트
+# 1) 기존 assets 이미지 (/images/...) 
 app.mount("/images", StaticFiles(directory=assets_path), name="images")
+
+# 2) 사용자가 업로드한 의류 사진 (/uploaded_images/...) 
+#    save_to_closet 에서 생성한 image_url (예: /uploaded_images/user_1_20251201_101010.jpg) 과 연결됩니다.
+app.mount("/uploaded_images", StaticFiles(directory=UPLOAD_DIR), name="uploaded_images")
 
 # 서비스 클래스 인스턴스 생성 (치수 측정 서비스 객체 생성)
 measurement_service = MeasurementService() # measurement_service 클래스의 인스턴스를 생성
