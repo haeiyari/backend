@@ -1154,30 +1154,30 @@ async def kakao_callback(code: str = None, error: str = None):
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
         
-        cursor.execute(
-            "SELECT * FROM users WHERE email = %s AND social_provider = 'kakao'",
-            (email,)
-        )
-        user = cursor.fetchone()
-        
-        if not user:
-            # 신규 사용자 등록
-            logger.info(f"신규 사용자 등록 중: {email}")
-            cursor.execute(
-                """
-                INSERT INTO users (email, name, social_provider, social_id, created_at)
-                VALUES (%s, %s, 'kakao', %s, NOW())
-                """,
-                (email, user_info.get("name", "카카오 사용자"), user_info.get("id"))
-            )
-            connection.commit()
-            user_id = cursor.lastrowid
+        # 1. 먼저 이메일로 가입된 회원이 있는지 찾아봅니다.
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            # [상황 A] 이미 가입된 사람이면 -> 그 사람 정보를 씁니다.
+            logger.info(f"기존 회원 로그인: {email}")
+            user = existing_user
             
-            cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
-            user = cursor.fetchone()
-            logger.info(f"✅ 신규 사용자 등록 완료 - user_id: {user_id}")
         else:
-            logger.info(f"✅ 기존 사용자 로그인 - user_id: {user['user_id']}")
+            # [상황 B] 가입된 사람이 없으면 -> 새로 회원가입 시킵니다.
+            logger.info(f"신규 회원 가입: {email}")
+            sql = """
+                INSERT INTO users (email, name, social_provider, social_id, password, created_at)
+                VALUES (%s, %s, %s, %s, '', NOW())
+            """
+            # provider 이름은 함수에 따라 'kakao', 'google', 'naver'로 
+            cursor.execute(sql, (email, user_info.get("name"), 'kakao', user_info.get("id")))
+            connection.commit()
+            
+            # 방금 가입시킨 정보를 다시 가져옵니다.
+            user_id = cursor.lastrowid
+            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+            user = cursor.fetchone()
         
         cursor.close()
         connection.close()
@@ -1295,25 +1295,29 @@ async def google_callback(code: str = None, error: str = None):
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
         
-        cursor.execute(
-            "SELECT * FROM users WHERE email = %s AND social_provider = 'google'",
-            (email,)
-        )
-        user = cursor.fetchone()
+        # 1. 먼저 이메일로 가입된 회원이 있는지 찾아봅니다.
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            # [상황 A] 이미 가입된 사람이면 -> 그 사람 정보를 씁니다.
+            logger.info(f"기존 회원 로그인: {email}")
+            user = existing_user
         
-        if not user:
-            # 신규 사용자 등록
-            cursor.execute(
-                """
-                INSERT INTO users (email, name, social_provider, social_id, created_at)
-                VALUES (%s, %s, 'google', %s, NOW())
-                """,
-                (email, user_info.get("name", "구글 사용자"), user_info.get("id"))
-            )
+        else:
+            # [상황 B] 가입된 사람이 없으면 -> 새로 회원가입 시킵니다.
+            logger.info(f"신규 회원 가입: {email}")
+            sql = """
+                INSERT INTO users (email, name, social_provider, social_id, password, created_at)
+                VALUES (%s, %s, %s, %s, '', NOW())
+            """
+            # provider 이름은 함수에 따라 'kakao', 'google', 'naver'로 잘 맞춰주세요!
+            cursor.execute(sql, (email, user_info.get("name"), 'google', user_info.get("id")))
             connection.commit()
-            user_id = cursor.lastrowid
             
-            cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+            # 방금 가입시킨 정보를 다시 가져옵니다.
+            user_id = cursor.lastrowid
+            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
         
         cursor.close()
@@ -1429,25 +1433,29 @@ async def naver_callback(code: str = None, state: str = None, error: str = None)
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
         
-        cursor.execute(
-            "SELECT * FROM users WHERE email = %s AND social_provider = 'naver'",
-            (email,)
-        )
-        user = cursor.fetchone()
-        
-        if not user:
-            # 신규 사용자 등록
-            cursor.execute(
-                """
-                INSERT INTO users (email, name, social_provider, social_id, created_at)
-                VALUES (%s, %s, 'naver', %s, NOW())
-                """,
-                (email, user_info.get("name", "네이버 사용자"), user_info.get("id"))
-            )
-            connection.commit()
-            user_id = cursor.lastrowid
+        # 1. 먼저 이메일로 가입된 회원이 있는지 찾아봅니다.
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            # [상황 A] 이미 가입된 사람이면 -> 그 사람 정보를 씁니다.
+            logger.info(f"기존 회원 로그인: {email}")
+            user = existing_user
             
-            cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+        else:
+            # [상황 B] 가입된 사람이 없으면 -> 새로 회원가입 시킵니다.
+            logger.info(f"신규 회원 가입: {email}")
+            sql = """
+                INSERT INTO users (email, name, social_provider, social_id, password, created_at)
+                VALUES (%s, %s, %s, %s, '', NOW())
+            """
+            # provider 이름은 함수에 따라 'kakao', 'google', 'naver'로 
+            cursor.execute(sql, (email, user_info.get("name"), 'naver', user_info.get("id")))
+            connection.commit()
+            
+            # 방금 가입시킨 정보를 다시 가져옵니다.
+            user_id = cursor.lastrowid
+            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
         
         cursor.close()
@@ -1580,7 +1588,7 @@ async def social_login(request: SocialLoginRequest):
         existing_user = cursor.fetchone()
         
         if existing_user:
-            # 기존 사용자 로그인
+            # [상황 A] 이미 소셜 연동이 되어있는 사람 -> 바로 로그인
             user_id = existing_user["id"]
             user_data = {
                 "user_id": user_id,
@@ -1588,29 +1596,46 @@ async def social_login(request: SocialLoginRequest):
                 "email": existing_user["email"]
             }
             logger.info(f"기존 소셜 사용자 로그인: {user_id}")
-        else:
-            # 신규 사용자 자동 회원가입
-            insert_sql = """
-                INSERT INTO users (name, email, social_id, social_provider, password)
-                VALUES (%s, %s, %s, %s, %s)
-            """
-            # 소셜 로그인 사용자는 비밀번호 없음 (빈 해시)
-            cursor.execute(insert_sql, (
-                user_info["name"],
-                user_info["email"],
-                user_info["social_id"],
-                user_info["provider"],
-                ""  # 소셜 로그인은 비밀번호 없음
-            ))
-            connection.commit()
-            user_id = cursor.lastrowid
             
-            user_data = {
-                "user_id": user_id,
-                "name": user_info["name"],
-                "email": user_info["email"]
-            }
-            logger.info(f"신규 소셜 사용자 가입: {user_id}")
+        else:
+            # [상황 B] 소셜 연동은 안 되어있음. 하지만 '이메일'이 같은 사람이 있는지 확인! (중요 ⭐)
+            cursor.execute("SELECT * FROM users WHERE email = %s", (user_info["email"],))
+            email_user = cursor.fetchone()
+            
+            if email_user:
+                # [상황 B-1] 이미 가입된 이메일이 있음 -> 에러 내지 말고 로그인 시켜줌 (통합)
+                logger.info(f"기존 이메일 계정으로 로그인 (소셜 연동): {email_user['email']}")
+                user_id = email_user["id"]
+                user_data = {
+                    "user_id": user_id,
+                    "name": email_user["name"],
+                    "email": email_user["email"]
+                }
+                # (선택사항: 나중을 위해 여기서 UPDATE로 social_id를 넣어줘도 됨)
+                
+            else:
+                # [상황 B-2] 이메일도 없음 -> 진짜 신규 가입
+                insert_sql = """
+                    INSERT INTO users (name, email, social_id, social_provider, password, created_at)
+                    VALUES (%s, %s, %s, %s, %s, NOW())
+                """
+                # 소셜 로그인 사용자는 비밀번호 없음 (빈 해시)
+                cursor.execute(insert_sql, (
+                    user_info["name"],
+                    user_info["email"],
+                    user_info["social_id"],
+                    user_info["provider"],
+                    ""  # 비밀번호 없음
+                ))
+                connection.commit()
+                user_id = cursor.lastrowid
+                
+                user_data = {
+                    "user_id": user_id,
+                    "name": user_info["name"],
+                    "email": user_info["email"]
+                }
+                logger.info(f"신규 소셜 사용자 가입: {user_id}")
         
         cursor.close()
         connection.close()
