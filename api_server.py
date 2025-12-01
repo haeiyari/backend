@@ -1201,6 +1201,12 @@ async def kakao_callback(code: str = None, error: str = None):
         
         cursor.close()
         connection.close()
+
+        user_data = {
+            "user_id": user["id"],
+            "name": user["name"],
+            "email": user["email"]
+        }
         
         # JWT 토큰 생성
         jwt_token = create_access_token({
@@ -1340,6 +1346,12 @@ async def google_callback(code: str = None, error: str = None):
         
         cursor.close()
         connection.close()
+
+        user_data = {
+            "user_id": user["id"],
+            "name": user["name"],
+            "email": user["email"]
+        }
         
        # JWT 토큰 생성
         jwt_token = create_access_token({
@@ -1480,6 +1492,12 @@ async def naver_callback(code: str = None, state: str = None, error: str = None)
         
         cursor.close()
         connection.close()
+
+        user_data = {
+            "user_id": user["id"],
+            "name": user["name"],
+            "email": user["email"]
+        }
         
         # JWT 토큰 생성
         jwt_token = create_access_token({

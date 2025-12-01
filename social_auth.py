@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 class KakaoAuth:
-    """카카오 로그인 처리"""
+   
     
     def __init__(self, client_id: str, client_secret: str = None):
         self.client_id = client_id
@@ -16,16 +16,7 @@ class KakaoAuth:
         self.user_info_url = "https://kapi.kakao.com/v2/user/me"
     
     def get_access_token(self, code: str, redirect_uri: str) -> Optional[str]:
-        """
-        인가 코드로 액세스 토큰 발급
         
-        Args:
-            code: 카카오로부터 받은 인가 코드
-            redirect_uri: 리다이렉트 URI
-        
-        Returns:
-            액세스 토큰 또는 None
-        """
         try:
             data = {
                 "grant_type": "authorization_code",
@@ -50,15 +41,7 @@ class KakaoAuth:
             return None
     
     def get_user_info(self, access_token: str) -> Optional[Dict]:
-        """
-        액세스 토큰으로 사용자 정보 조회
-        
-        Args:
-            access_token: 카카오 액세스 토큰
-        
-        Returns:
-            사용자 정보 딕셔너리 또는 None
-        """
+       
         try:
             headers = {
                 "Authorization": f"Bearer {access_token}"
@@ -90,7 +73,7 @@ class KakaoAuth:
 
 
 class GoogleAuth:
-    """구글 로그인 처리"""
+   
     
     def __init__(self, client_id: str, client_secret: str):
         self.client_id = client_id
@@ -99,16 +82,7 @@ class GoogleAuth:
         self.user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
     
     def get_access_token(self, code: str, redirect_uri: str) -> Optional[str]:
-        """
-        인가 코드로 액세스 토큰 발급
-        
-        Args:
-            code: 구글로부터 받은 인가 코드
-            redirect_uri: 리다이렉트 URI
-        
-        Returns:
-            액세스 토큰 또는 None
-        """
+       
         try:
             data = {
                 "grant_type": "authorization_code",
@@ -131,15 +105,7 @@ class GoogleAuth:
             return None
     
     def get_user_info(self, access_token: str) -> Optional[Dict]:
-        """
-        액세스 토큰으로 사용자 정보 조회
-        
-        Args:
-            access_token: 구글 액세스 토큰
-        
-        Returns:
-            사용자 정보 딕셔너리 또는 None
-        """
+       
         try:
             headers = {
                 "Authorization": f"Bearer {access_token}"
@@ -167,7 +133,7 @@ class GoogleAuth:
 
 
 class NaverAuth:
-    """네이버 로그인 처리"""
+
 
     def __init__(self, client_id: str, client_secret: str):
         self.client_id = client_id
@@ -176,16 +142,7 @@ class NaverAuth:
         self.user_info_url = "https://openapi.naver.com/v1/nid/me"
 
     def get_access_token(self, code: str, redirect_uri: str) -> Optional[str]:
-        """
-        인가 코드로 액세스 토큰 발급
-
-        Args:
-            code: 네이버로부터 받은 인가 코드
-            redirect_uri: 리다이렉트 URI
-
-        Returns:
-            액세스 토큰 또는 None
-        """
+       
         try:
             params = {
                 "grant_type": "authorization_code",
@@ -208,15 +165,7 @@ class NaverAuth:
             return None
 
     def get_user_info(self, access_token: str) -> Optional[Dict]:
-        """
-        액세스 토큰으로 사용자 정보 조회
-
-        Args:
-            access_token: 네이버 액세스 토큰
-
-        Returns:
-            사용자 정보 딕셔너리 또는 None
-        """
+       
         try:
             headers = {
                 "Authorization": f"Bearer {access_token}",
