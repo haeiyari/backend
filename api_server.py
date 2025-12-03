@@ -21,6 +21,7 @@ import hashlib
 from fastapi.openapi.utils import get_openapi
 import numpy as np
 from dotenv import load_dotenv
+import urllib.parse
 
 # [추가된 함수] NumPy 데이터를 일반 파이썬 데이터로 변환해주는 청소기 함수
 def make_serializable(obj):
@@ -1198,11 +1199,14 @@ async def kakao_callback(code: str = None, error: str = None):
                 "email": user_data["email"]
             })
         
-        # 로그 출력도 user_data를 쓰세요
+        # 로그 출력
         logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
+
+        user_name = user_data.get('name', '고객')
+        encoded_name = urllib.parse.quote(user_name)
         
         frontend_url = "http://127.0.0.1:5500/home.html"
-        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
+        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success&name={encoded_name}")
         
     except Exception as e:
         logger.error(f"카카오 콜백 처리 오류: {str(e)}") 
@@ -1312,8 +1316,11 @@ async def google_callback(code: str = None, error: str = None):
         
         logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
+        user_name = user_data.get('name', '고객')
+        encoded_name = urllib.parse.quote(user_name)
+        
         frontend_url = "http://127.0.0.1:5500/home.html"
-        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
+        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success&name={encoded_name}")
         
     except Exception as e:
         logger.error(f"카카오 콜백 처리 오류: {str(e)}")
@@ -1423,8 +1430,11 @@ async def naver_callback(code: str = None, state: str = None, error: str = None)
             })
         logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
+        user_name = user_data.get('name', '고객')
+        encoded_name = urllib.parse.quote(user_name)
+        
         frontend_url = "http://127.0.0.1:5500/home.html"
-        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
+        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success&name={encoded_name}")
         
     except Exception as e:
         logger.error(f"카카오 콜백 처리 오류: {str(e)}") 

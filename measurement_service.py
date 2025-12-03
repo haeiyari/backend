@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple, Optional
 import base64
 
 class MeasurementService:
-    """의류 치수 측정 서비스 클래스"""
+    
     
     def __init__(self):
         self.a4_width_cm = 21.0
@@ -166,20 +166,7 @@ class MeasurementService:
                                horiz_scale_correction: float = 1.0,
                                vert_scale_correction: float = 1.0,
                                waist_corr: float = 1.0, hip_corr: float = 1.0, thigh_corr: float = 1.0) -> Dict:
-        """
-        사용자가 조정한 키포인트로 측정
-        
-        Args:
-            image_data: 이미지 바이트 데이터
-            clothing_type: 'shirt' 또는 'pants'
-            keypoints: 조정된 키포인트 좌표 리스트
-            a4_box: A4 용지 박스 좌표
-            pixelsPerCM_w: 가로 픽셀/cm 비율
-            pixelsPerCM_h: 세로 픽셀/cm 비율
-            
-        Returns:
-            측정 결과 딕셔너리
-        """
+       
         # 이미지 디코딩
         nparr = np.frombuffer(image_data, np.uint8)
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -325,9 +312,7 @@ class MeasurementService:
         return pixelsPerCM_width, pixelsPerCM_height
 
     def _get_homography_for_a4(self, a4_box: np.ndarray, scale_px_per_cm: float = 30.0) -> Tuple[np.ndarray, Tuple[int, int], float]:
-        """A4 박스를 기준으로 평면 보정을 위한 호모그래피와 출력 크기 반환.
-        반환된 출력 크기는 (width_px, height_px)이며, scale_px_per_cm는 1cm당 픽셀 수.
-        """
+        
         # 점 순서 정리 (tl, tr, br, bl)
         box = self._order_points(a4_box.astype(np.float32))
 
@@ -360,7 +345,7 @@ class MeasurementService:
     
     def _measure_shirt(self, image: np.ndarray, a4_box: np.ndarray, 
                        pixelsPerCM_w: float, pixelsPerCM_h: float, scale_w: float = 1.0, scale_h: float = 1.0) -> Dict:
-        """상의 치수 측정"""
+        
         vis = image.copy()
         cv2.drawContours(vis, [a4_box.astype(np.int32)], -1, (255, 0, 0), 3)
         
@@ -613,7 +598,7 @@ class MeasurementService:
         }
     
     def _auto_detect_keypoints_shirt(self, image: np.ndarray, contour: np.ndarray) -> np.ndarray:
-        """상의 키포인트 자동 검출"""
+       
         mask = np.zeros(image.shape[:2], dtype=np.uint8)
         cv2.drawContours(mask, [contour], -1, 255, -1)
         
@@ -660,7 +645,7 @@ class MeasurementService:
         return keypoints
     
     def _auto_detect_keypoints_pants(self, image: np.ndarray, contour: np.ndarray) -> np.ndarray:
-        """바지 키포인트 자동 검출"""
+        
         mask = np.zeros(image.shape[:2], dtype=np.uint8)
         cv2.drawContours(mask, [contour], -1, 255, -1)
         
@@ -703,9 +688,7 @@ class MeasurementService:
         return keypoints
     
     def _width_profile(self, binary_mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """폭 프로파일 계산
-        - 세로 방향 작은 구멍/하이라이트로 폭이 깎이지 않도록 5행 윈도우(최대값)로 합성 후 좌우 경계를 산출한다.
-        """
+        
         h, w = binary_mask.shape
         left = np.zeros(h, dtype=int)
         right = np.zeros(h, dtype=int)
@@ -725,7 +708,7 @@ class MeasurementService:
         return left, right, widths
     
     def _find_key_heights_shirt(self, widths: np.ndarray) -> Tuple:
-        """상의 주요 높이 계산"""
+        
         h = len(widths)
         valid_rows = np.where(widths > 0)[0]
         if len(valid_rows) == 0:
@@ -745,9 +728,7 @@ class MeasurementService:
         return top_y, shoulder_y, chest_y, bottom_y
     
     def _find_key_heights_pants(self, widths: np.ndarray) -> Tuple:
-        """바지 주요 높이 계산
-        - hip_y: 고정 비율이 아닌 폭 프로파일의 지역 최대를 이용해 동적으로 결정
-        """
+        
         h = len(widths)
         valid_rows = np.where(widths > 0)[0]
         if len(valid_rows) == 0:
@@ -789,7 +770,7 @@ class MeasurementService:
         return top_y, waist_y, crotch_y, hip_y, thigh_y, hem_y, bottom_y
     
     def _get_dynamic_correction_factor(self, raw_measurement: float, measurement_type: str) -> float:
-        """상의 동적 보정 계수"""
+        
         base_corrections = {
             'length': 1.354,
             'shoulder': 1.381,
@@ -823,7 +804,7 @@ class MeasurementService:
         return base_factor
     
     def _get_pants_correction_factor(self, raw_measurement: float, measurement_type: str) -> float:
-        """하의 동적 보정 계수"""
+      
         if measurement_type == 'length':
             if raw_measurement > 105:
                 return 0.90
@@ -887,7 +868,7 @@ class MeasurementService:
     def _measure_shirt_with_keypoints(self, image: np.ndarray, a4_box: np.ndarray,
                                       keypoints: np.ndarray, pixelsPerCM_w: float, 
                                       pixelsPerCM_h: float, scale_w: float = 1.0, scale_h: float = 1.0) -> Dict:
-        """사용자가 조정한 키포인트로 상의 측정"""
+        
         vis = image.copy()
         cv2.drawContours(vis, [a4_box.astype(np.int32)], -1, (255, 0, 0), 3)
         
@@ -950,7 +931,7 @@ class MeasurementService:
                                       keypoints: np.ndarray, pixelsPerCM_w: float,
                                       pixelsPerCM_h: float, scale_w: float = 1.0, scale_h: float = 1.0,
                                       waist_corr: float = 1.0, hip_corr: float = 1.0, thigh_corr: float = 1.0) -> Dict:
-        """사용자가 조정한 키포인트로 하의 측정"""
+       
         vis = image.copy()
         cv2.drawContours(vis, [a4_box.astype(np.int32)], -1, (255, 0, 0), 3)
         
@@ -1053,7 +1034,7 @@ class MeasurementService:
         }
     
     def _order_points(self, pts: np.ndarray) -> np.ndarray:
-        """꼭짓점 좌표 정렬"""
+        #꼭짓점 좌표 정렬
         rect = np.zeros((4, 2), dtype="float32")
         s = pts.sum(axis=1)
         rect[0] = pts[np.argmin(s)]
