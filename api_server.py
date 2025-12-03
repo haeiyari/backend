@@ -1204,10 +1204,11 @@ async def kakao_callback(code: str = None, error: str = None):
 
         user_name = user_data.get('name', '고객')
         encoded_name = urllib.parse.quote(user_name)
+        user_email = user_data.get('email', '')
         
         frontend_url = "http://127.0.0.1:5500/home.html"
-        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success&name={encoded_name}")
-        
+        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success&name={encoded_name}&email={user_email}")
+
     except Exception as e:
         logger.error(f"카카오 콜백 처리 오류: {str(e)}") 
 
@@ -1318,9 +1319,10 @@ async def google_callback(code: str = None, error: str = None):
         
         user_name = user_data.get('name', '고객')
         encoded_name = urllib.parse.quote(user_name)
+        user_email = user_data.get('email', '')
         
         frontend_url = "http://127.0.0.1:5500/home.html"
-        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success&name={encoded_name}")
+        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success&name={encoded_name}&email={user_email}")
         
     except Exception as e:
         logger.error(f"카카오 콜백 처리 오류: {str(e)}")
@@ -1432,9 +1434,10 @@ async def naver_callback(code: str = None, state: str = None, error: str = None)
         
         user_name = user_data.get('name', '고객')
         encoded_name = urllib.parse.quote(user_name)
+        user_email = user_data.get('email', '')
         
         frontend_url = "http://127.0.0.1:5500/home.html"
-        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success&name={encoded_name}")
+        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success&name={encoded_name}&email={user_email}")
         
     except Exception as e:
         logger.error(f"카카오 콜백 처리 오류: {str(e)}") 
