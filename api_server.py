@@ -117,11 +117,10 @@ if not os.path.exists(assets_path):
     os.makedirs(assets_path)
 
 # 정적 파일 마운트
-# 1) 기존 assets 이미지 (/images/...) 
+# 1) 기존 assets 이미지
 app.mount("/images", StaticFiles(directory=assets_path), name="images")
 
-# 2) 사용자가 업로드한 의류 사진 (/uploaded_images/...) 
-#    save_to_closet 에서 생성한 image_url (예: /uploaded_images/user_1_20251201_101010.jpg) 과 연결됩니다.
+# 2) 사용자가 업로드한 의류 사진
 app.mount("/uploaded_images", StaticFiles(directory=UPLOAD_DIR), name="uploaded_images")
 
 # 서비스 클래스 인스턴스 생성 (치수 측정 서비스 객체 생성)
@@ -139,7 +138,7 @@ DB_CONFIG = {
 }
 
 def get_db_connection():
-    """MySQL 데이터베이스 연결"""
+
     try:
         connection = mysql.connector.connect(**DB_CONFIG)
         return connection
@@ -150,18 +149,18 @@ def get_db_connection():
 # WebSocket 세션 관리
 class ConnectionManager:
     def __init__(self):
-        # 세션 ID -> {desktop: WebSocket, mobile: WebSocket}
+        
         self.sessions: Dict[str, Dict[str, WebSocket]] = {}
     
     def create_session(self) -> str:
-        """새로운 세션 ID 생성"""
+     
         session_id = str(uuid.uuid4())[:8]
         self.sessions[session_id] = {}
         logger.info(f"새 세션 생성: {session_id}")
         return session_id
     
     async def connect_desktop(self, session_id: str, websocket: WebSocket):
-        """데스크톱 연결"""
+     
         await websocket.accept()
         if session_id not in self.sessions:
             self.sessions[session_id] = {}
@@ -169,7 +168,7 @@ class ConnectionManager:
         logger.info(f"데스크톱 연결: {session_id}")
     
     async def connect_mobile(self, session_id: str, websocket: WebSocket):
-        """모바일 연결"""
+       
         await websocket.accept()
         if session_id not in self.sessions:
             self.sessions[session_id] = {}
@@ -184,7 +183,7 @@ class ConnectionManager:
             })
     
     def disconnect(self, session_id: str, device_type: str):
-        """연결 해제"""
+      
         if session_id in self.sessions and device_type in self.sessions[session_id]:
             del self.sessions[session_id][device_type]
             logger.info(f"{device_type} 연결 해제: {session_id}")
@@ -195,7 +194,7 @@ class ConnectionManager:
                 logger.info(f"세션 삭제: {session_id}")
     
     async def send_to_desktop(self, session_id: str, message: dict):
-        """데스크톱으로 메시지 전송"""
+       
         if session_id in self.sessions and 'desktop' in self.sessions[session_id]:
             try:
                 await self.sessions[session_id]['desktop'].send_json(message)
@@ -203,7 +202,7 @@ class ConnectionManager:
                 logger.error(f"데스크톱 전송 오류: {e}")
     
     async def send_to_mobile(self, session_id: str, message: dict):
-        """모바일로 메시지 전송"""
+       
         if session_id in self.sessions and 'mobile' in self.sessions[session_id]:
             try:
                 await self.sessions[session_id]['mobile'].send_json(message)
@@ -228,7 +227,7 @@ naver_auth = NaverAuth(
     client_secret=os.getenv("NAVER_CLIENT_SECRET", "")
 )
 
-# 로그아웃된 토큰 블랙리스트 (실제 운영에서는 Redis 사용 권장)
+# 로그아웃된 토큰 블랙리스트 
 token_blacklist: Set[str] = set()
 
 # 응답 모델
@@ -304,7 +303,7 @@ class OrderFromCartRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """루트 경로에서 웹 시작 화면(index.html)을 제공"""
+    # 루트 경로에서 웹 시작 화면(index.html)을 제공
     try:
         index_path = os.path.join(BASE_DIR, "index.html")
         with open(index_path, "r", encoding="utf-8") as f:
@@ -324,7 +323,7 @@ async def root():
 
 @app.get("/index.html", response_class=HTMLResponse)
 async def index_html():
-    """명시적 경로(/index.html)로도 시작 화면 제공"""
+    # 명시적 경로(/index.html)로도 시작 화면 제공
     try:
         index_path = os.path.join(BASE_DIR, "index.html")
         with open(index_path, "r", encoding="utf-8") as f:
@@ -337,7 +336,7 @@ async def index_html():
 
 @app.get("/mobile_capture.html", response_class=HTMLResponse)
 async def mobile_capture_page():
-    """모바일 촬영 페이지 제공"""
+    # 모바일 촬영 페이지 제공
     try:
         html_path = os.path.join(BASE_DIR, "mobile_capture.html")
         with open(html_path, "r", encoding="utf-8") as f:
@@ -350,7 +349,7 @@ async def mobile_capture_page():
 
 @app.get("/demo_with_keypoints.html", response_class=HTMLResponse)
 async def demo_with_keypoints_page():
-    """측정/키포인트 조정 페이지 제공"""
+   
     try:
         html_path = os.path.join(BASE_DIR, "demo_with_keypoints.html")
         with open(html_path, "r", encoding="utf-8") as f:
@@ -502,7 +501,7 @@ async def login(request: LoginRequest):
 
 @app.get("/my_closet.html", response_class=HTMLResponse)
 async def my_closet_page():
-    """내 옷장 페이지 제공"""
+ 
     try:
         html_path = os.path.join(BASE_DIR, "my_closet.html")
         with open(html_path, "r", encoding="utf-8") as f:
@@ -515,7 +514,7 @@ async def my_closet_page():
 
 @app.get("/test_auth.html", response_class=HTMLResponse)
 async def test_auth_page():
-    """API 테스트 페이지 제공"""
+    # API 테스트 페이지 제공
     try:
         html_path = os.path.join(BASE_DIR, "test_auth.html")
         with open(html_path, "r", encoding="utf-8") as f:
@@ -697,7 +696,7 @@ async def measure_with_keypoints(
         keypoints_list = json.loads(keypoints)
         a4_box_list = json.loads(a4_box)
         
-        image_data = await image.read() # 이미지 데이터 읽기기
+        image_data = await image.read() # 이미지 데이터 읽기
         
         if len(image_data) == 0:
             raise HTTPException(status_code=400, detail="빈 이미지 파일입니다.")
@@ -709,7 +708,7 @@ async def measure_with_keypoints(
             pixelsPerCM_w, pixelsPerCM_h, scale_correction,
             horiz_scale_correction, vert_scale_correction
         )
-        # 5. 결과 처리리
+        # 5. 결과 처리
         if "error" in result:
             logger.warning(f"측정 실패: {result['error']}")
             raise HTTPException(status_code=422, detail=result["error"])
@@ -729,9 +728,9 @@ async def measure_with_keypoints(
 
 @app.get("/supported-measurements")
 async def get_supported_measurements():
-    """
-    지원하는 측정 항목 조회
-    """
+    
+    # 지원하는 측정 항목 조회
+    
     return {
         "shirt": {
             "measurements": ["length", "shoulder", "chest", "sleeve"],
@@ -870,9 +869,7 @@ async def save_to_closet(
 
 @app.get("/my-closet/{user_id}")
 async def get_my_closet(user_id: int):
-    """
-    사용자의 옷장 목록 조회
-    """
+    
     try:
         logger.info(f"내 옷장 조회 요청 - user_id: {user_id}")
         
@@ -1023,12 +1020,7 @@ async def websocket_mobile(websocket: WebSocket, session_id: str):
 
 @app.get("/auth/kakao/login-url")
 async def get_kakao_login_url():
-    """
-    카카오 로그인 인가 코드 요청용 URL 생성
-
-    프론트엔드는 이 URL로 리다이렉트하면 됩니다.
-    (code를 받은 뒤 /auth/social-login으로 전달)
-    """
+    
     client_id = os.getenv("KAKAO_CLIENT_ID", "")
     redirect_uri = os.getenv(
         "KAKAO_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/kakao/callback"
@@ -1052,9 +1044,7 @@ async def get_kakao_login_url():
 
 @app.get("/auth/google/login-url")
 async def get_google_login_url():
-    """
-    구글 로그인 인가 코드 요청용 URL 생성
-    """
+    
     client_id = os.getenv("GOOGLE_CLIENT_ID", "")
     redirect_uri = os.getenv(
         "GOOGLE_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/google/callback"
@@ -1079,9 +1069,7 @@ async def get_google_login_url():
 
 @app.get("/auth/naver/login-url")
 async def get_naver_login_url():
-    """
-    네이버 로그인 인가 코드 요청용 URL 생성
-    """
+    
     client_id = os.getenv("NAVER_CLIENT_ID", "")
     redirect_uri = os.getenv(
         "NAVER_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/naver/callback"
@@ -1108,10 +1096,7 @@ async def get_naver_login_url():
 
 @app.get("/oauth/kakao/callback")
 async def kakao_callback(code: str = None, error: str = None):
-    """
-    카카오 OAuth 콜백 엔드포인트
-    카카오에서 인증 후 이 URL로 리다이렉트됩니다.
-    """
+    
     try:
         logger.info("=" * 50)
         logger.info("카카오 콜백 엔드포인트 호출됨")
@@ -1220,21 +1205,18 @@ async def kakao_callback(code: str = None, error: str = None):
         return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
         
     except Exception as e:
-    logger.error(f"카카오 콜백 처리 오류: {str(e)}")
+        logger.error(f"카카오 콜백 처리 오류: {str(e)}") 
 
-    return {
+        return {  # 이것도 탭 눌러서 안으로!
         "status": "error",
         "message": "로그인 처리 중 오류 발생",
         "detail": str(e)
-    }
+        }
 
 
 @app.get("/oauth/google/callback")
 async def google_callback(code: str = None, error: str = None):
-    """
-    구글 OAuth 콜백 엔드포인트
-    구글에서 인증 후 이 URL로 리다이렉트됩니다.
-    """
+   
     try:
         logger.info("=" * 50)
         logger.info("구글 콜백 엔드포인트 호출됨")
@@ -1288,27 +1270,27 @@ async def google_callback(code: str = None, error: str = None):
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
         
-        # 1. 먼저 이메일로 가입된 회원이 있는지 찾아봅니다.
+        # 1. 먼저 이메일로 가입된 회원이 있는지 찾아봅니다
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         existing_user = cursor.fetchone()
 
         if existing_user:
-            # [상황 A] 이미 가입된 사람이면 -> 그 사람 정보를 씁니다.
+            # [상황 A] 이미 가입된 사람이면 -> 그 사람 정보를 씀
             logger.info(f"기존 회원 로그인: {email}")
             user = existing_user
         
         else:
-            # [상황 B] 가입된 사람이 없으면 -> 새로 회원가입 시킵니다.
+            # [상황 B] 가입된 사람이 없으면 -> 새로 회원가입 시킴
             logger.info(f"신규 회원 가입: {email}")
             sql = """
                 INSERT INTO users (email, name, social_provider, social_id, password, created_at)
                 VALUES (%s, %s, %s, %s, '', NOW())
             """
-            # provider 이름은 함수에 따라 'kakao', 'google', 'naver'로 잘 맞춰주세요!
+           
             cursor.execute(sql, (email, user_info.get("name"), 'google', user_info.get("id")))
             connection.commit()
             
-            # 방금 가입시킨 정보를 다시 가져옵니다.
+            # 방금 가입시킨 정보를 다시 가져옵니다
             user_id = cursor.lastrowid
             cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
@@ -1327,28 +1309,25 @@ async def google_callback(code: str = None, error: str = None):
                 "email": user_data["email"]
             })
         
-        # 로그 출력도 user_data를 쓰세요
+        
         logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
         frontend_url = "http://127.0.0.1:5500/home.html"
         return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
         
     except Exception as e:
-    logger.error(f"구글 콜백 처리 오류: {str(e)}")
+        logger.error(f"카카오 콜백 처리 오류: {str(e)}")
 
-    return {
+        return {  
         "status": "error",
         "message": "로그인 처리 중 오류 발생",
         "detail": str(e)
-    }
+        }
 
 
 @app.get("/oauth/naver/callback")
 async def naver_callback(code: str = None, state: str = None, error: str = None):
-    """
-    네이버 OAuth 콜백 엔드포인트
-    네이버에서 인증 후 이 URL로 리다이렉트됩니다.
-    """
+    
     try:
         logger.info("=" * 50)
         logger.info("네이버 콜백 엔드포인트 호출됨")
@@ -1403,27 +1382,27 @@ async def naver_callback(code: str = None, state: str = None, error: str = None)
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
         
-        # 1. 먼저 이메일로 가입된 회원이 있는지 찾아봅니다.
+        # 1. 먼저 이메일로 가입된 회원이 있는지 찾아봅니다
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         existing_user = cursor.fetchone()
 
         if existing_user:
-            # [상황 A] 이미 가입된 사람이면 -> 그 사람 정보를 씁니다.
+            # [상황 A] 이미 가입된 사람이면 -> 그 사람 정보를 씁니다
             logger.info(f"기존 회원 로그인: {email}")
             user = existing_user
             
         else:
-            # [상황 B] 가입된 사람이 없으면 -> 새로 회원가입 시킵니다.
+            # [상황 B] 가입된 사람이 없으면 -> 새로 회원가입 시킵니다
             logger.info(f"신규 회원 가입: {email}")
             sql = """
                 INSERT INTO users (email, name, social_provider, social_id, password, created_at)
                 VALUES (%s, %s, %s, %s, '', NOW())
             """
-            # provider 이름은 함수에 따라 'kakao', 'google', 'naver'로 
+          
             cursor.execute(sql, (email, user_info.get("name"), 'naver', user_info.get("id")))
             connection.commit()
             
-            # 방금 가입시킨 정보를 다시 가져옵니다.
+            # 방금 가입시킨 정보를 다시 가져옵니다
             user_id = cursor.lastrowid
             cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
@@ -1448,28 +1427,20 @@ async def naver_callback(code: str = None, state: str = None, error: str = None)
         return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
         
     except Exception as e:
-    logger.error(f"네이버 콜백 처리 오류: {str(e)}")
+        logger.error(f"카카오 콜백 처리 오류: {str(e)}") 
 
-    return {
+        return {  
         "status": "error",
         "message": "로그인 처리 중 오류 발생",
         "detail": str(e)
-    }
+        }
 
 
 # ==================== 1단계: 소셜 로그인 ====================
 
 @app.post("/auth/social-login")
 async def social_login(request: SocialLoginRequest):
-    """
-    소셜 로그인 (카카오/구글)
     
-    Args:
-        request: 소셜 로그인 요청 (code, redirect_uri, provider)
-    
-    Returns:
-        사용자 정보 및 JWT 토큰
-    """
     try:
         logger.info(f"소셜 로그인 요청 - provider: {request.provider}")
         
@@ -1512,7 +1483,7 @@ async def social_login(request: SocialLoginRequest):
 
         # 카카오 등에서 이메일 제공 동의를 하지 않았을 때 email 이 None 인 경우가 있음
         # 우리 DB의 users.email 컬럼은 NOT NULL + UNIQUE 이므로,
-        # 이메일이 없을 때는 소셜 ID 기반의 임시 이메일을 생성해서 저장한다.
+        # 이메일이 없을 때는 소셜 ID 기반의 임시 이메일을 생성해서 저장한다
         if not user_info.get("email"):
             generated_email = f"{user_info['provider']}_{user_info['social_id']}@no-email.local"
             logger.warning(
@@ -1544,7 +1515,7 @@ async def social_login(request: SocialLoginRequest):
             logger.info(f"기존 소셜 사용자 로그인: {user_id}")
             
         else:
-            # [상황 B] 소셜 연동은 안 되어있음. 하지만 '이메일'이 같은 사람이 있는지 확인! (중요 ⭐)
+            # [상황 B] 소셜 연동은 안 되어있음. 하지만 '이메일'이 같은 사람이 있는지 확인!
             cursor.execute("SELECT * FROM users WHERE email = %s", (user_info["email"],))
             email_user = cursor.fetchone()
             
@@ -1557,7 +1528,7 @@ async def social_login(request: SocialLoginRequest):
                     "name": email_user["name"],
                     "email": email_user["email"]
                 }
-                # (선택사항: 나중을 위해 여기서 UPDATE로 social_id를 넣어줘도 됨)
+                
                 
             else:
                 # [상황 B-2] 이메일도 없음 -> 진짜 신규 가입
@@ -1614,15 +1585,7 @@ async def social_login(request: SocialLoginRequest):
 
 @app.post("/auth/logout")
 async def logout(authorization: Optional[str] = Header(None)):
-    """
-    로그아웃
     
-    Args:
-        authorization: Bearer 토큰
-    
-    Returns:
-        로그아웃 성공 메시지
-    """
     try:
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="인증 토큰이 없습니다.")
@@ -1649,15 +1612,7 @@ async def logout(authorization: Optional[str] = Header(None)):
 
 @app.post("/auth/password-reset/request")
 async def request_password_reset(request: PasswordResetRequest):
-    """
-    비밀번호 재설정 요청 (이메일 발송)
-    
-    Args:
-        request: 이메일 주소
-    
-    Returns:
-        이메일 발송 성공 메시지
-    """
+   
     try:
         logger.info(f"비밀번호 재설정 요청: {request.email}")
         
@@ -1703,15 +1658,7 @@ async def request_password_reset(request: PasswordResetRequest):
 
 @app.post("/auth/password-reset/confirm")
 async def confirm_password_reset(request: PasswordChangeRequest):
-    """
-    비밀번호 재설정 확정
-    
-    Args:
-        request: 토큰 및 새 비밀번호
-    
-    Returns:
-        비밀번호 변경 성공 메시지
-    """
+   
     try:
         # 1. 토큰 검증
         email = verify_reset_token(request.token)
@@ -1754,16 +1701,7 @@ async def confirm_password_reset(request: PasswordChangeRequest):
 
 @app.delete("/auth/withdraw/{user_id}")
 async def withdraw_user(user_id: int, authorization: Optional[str] = Header(None)):
-    """
-    회원 탈퇴
     
-    Args:
-        user_id: 탈퇴할 사용자 ID
-        authorization: Bearer 토큰 (본인 확인용)
-    
-    Returns:
-        탈퇴 성공 메시지
-    """
     try:
         # 1. 토큰 검증 (본인 확인)
         if not authorization or not authorization.startswith("Bearer "):
@@ -1821,12 +1759,7 @@ async def withdraw_user(user_id: int, authorization: Optional[str] = Header(None
 
 @app.get("/categories")
 async def get_categories():
-    """
-    카테고리 목록 조회
     
-    Returns:
-        전체 카테고리 목록
-    """
     try:
         logger.info("카테고리 목록 조회 요청")
 
@@ -1866,19 +1799,7 @@ async def search_products(
     max_price: Optional[float] = None,
     limit: int = 20
 ):
-    """
-    상품 검색 (기본 SQL 검색)
     
-    Args:
-        keyword: 검색 키워드
-        category: 카테고리 필터 (선택)
-        min_price: 최소 가격 (선택)
-        max_price: 최대 가격 (선택)
-        limit: 결과 개수 제한
-    
-    Returns:
-        검색 결과 목록
-    """
     try:
         logger.info(f"상품 검색 요청: keyword={keyword}, category={category}")
         
@@ -1936,19 +1857,7 @@ async def get_products(
     sort_by: str = "created_at",
     order: str = "desc"
 ):
-    """
-    상품 목록 조회 (페이지네이션)
     
-    Args:
-        page: 페이지 번호 (기본값: 1)
-        limit: 페이지당 상품 개수 (기본값: 20)
-        category_id: 카테고리 ID 필터 (선택)
-        sort_by: 정렬 기준 (created_at, price, name)
-        order: 정렬 순서 (asc, desc)
-    
-    Returns:
-        상품 목록 및 페이지 정보
-    """
     try:
         logger.info(f"상품 목록 조회: page={page}, limit={limit}, category_id={category_id}")
         
@@ -2030,15 +1939,7 @@ async def get_products(
 
 @app.get("/products/{product_id}")
 async def get_product_detail(product_id: int):
-    """
-    상품 상세 정보 조회
     
-    Args:
-        product_id: 상품 ID
-    
-    Returns:
-        상품 상세 정보 (사이즈 옵션, 실측 정보 포함)
-    """
     try:
         logger.info(f"상품 상세 조회: product_id={product_id}")
         
@@ -2126,12 +2027,7 @@ async def get_product_detail(product_id: int):
 
 @app.post("/cart")
 async def add_to_cart(request: CartItemCreateRequest):
-    """
-    장바구니에 상품 추가
-
-    - 이미 같은 상품이 있으면 수량만 증가
-    - 없으면 새로 추가
-    """
+    
     try:
         logger.info(
             f"장바구니 추가 요청 - user_id={request.user_id}, "
@@ -2239,9 +2135,7 @@ async def add_to_cart(request: CartItemCreateRequest):
 
 @app.get("/cart")
 async def get_cart(user_id: int):
-    """
-    사용자의 장바구니 목록 조회
-    """
+    
     try:
         logger.info(f"장바구니 조회 요청 - user_id={user_id}")
 
@@ -2324,9 +2218,7 @@ async def get_cart(user_id: int):
 
 @app.patch("/cart/{cart_id}")
 async def update_cart_item(cart_id: int, request: CartItemUpdateRequest):
-    """
-    장바구니 항목 수량 변경
-    """
+    
     try:
         logger.info(f"장바구니 수량 변경 요청 - cart_id={cart_id}, quantity={request.quantity}")
 
@@ -2391,9 +2283,7 @@ async def update_cart_item(cart_id: int, request: CartItemUpdateRequest):
 
 @app.delete("/cart/{cart_id}")
 async def delete_cart_item(cart_id: int):
-    """
-    장바구니 항목 삭제
-    """
+    
     try:
         logger.info(f"장바구니 삭제 요청 - cart_id={cart_id}")
 
@@ -2438,11 +2328,7 @@ async def delete_cart_item(cart_id: int):
 
 @app.post("/wishlist")
 async def add_to_wishlist(request: WishlistCreateRequest):
-    """
-    위시리스트에 상품 추가
-
-    - 이미 같은 상품이 찜 되어 있으면 그대로 성공 응답만 반환
-    """
+    
     try:
         logger.info(
             f"위시리스트 추가 요청 - user_id={request.user_id}, "
@@ -2525,9 +2411,7 @@ async def add_to_wishlist(request: WishlistCreateRequest):
 
 @app.get("/wishlist")
 async def get_wishlist(user_id: int):
-    """
-    사용자의 위시리스트 조회
-    """
+    
     try:
         logger.info(f"위시리스트 조회 요청 - user_id={user_id}")
 
@@ -2596,9 +2480,7 @@ async def get_wishlist(user_id: int):
 
 @app.delete("/wishlist/{wishlist_id}")
 async def delete_wishlist_item(wishlist_id: int):
-    """
-    위시리스트 항목 삭제
-    """
+    
     try:
         logger.info(f"위시리스트 삭제 요청 - wishlist_id={wishlist_id}")
 
@@ -2642,12 +2524,7 @@ async def delete_wishlist_item(wishlist_id: int):
 
 @app.post("/orders/from-cart")
 async def create_order_from_cart(request: OrderFromCartRequest):
-    """
-    장바구니 기반 주문 생성
-
-    - 현재 사용자의 장바구니를 읽어서 주문 + 주문상품 + 결제 + 배송 정보까지 한 번에 생성
-    - 결제 자체는 아직 연동하지 않고, 상태만 '결제대기'로 설정
-    """
+    
     try:
         logger.info(f"주문 생성 요청(from cart) - user_id={request.user_id}")
 
@@ -2782,9 +2659,7 @@ async def create_order_from_cart(request: OrderFromCartRequest):
 
 @app.get("/orders/my")
 async def get_my_orders(user_id: int):
-    """
-    내 주문 목록 조회
-    """
+   
     try:
         logger.info(f"주문 목록 조회 요청 - user_id={user_id}")
 
@@ -2850,14 +2725,14 @@ async def get_my_orders(user_id: int):
 
 @app.get("/orders/{order_id}")
 async def get_order_detail(order_id: int):
-    """
-    주문 상세 조회
+   
+    ##주문 상세 조회
 
-    - 주문 기본 정보
-    - 주문 상품 목록
-    - 결제 정보
-    - 배송 정보
-    """
+    #주문 기본 정보
+    #주문 상품 목록
+    #결제 정보
+    #배송 정보
+    
     try:
         logger.info(f"주문 상세 조회 요청 - order_id={order_id}")
 
