@@ -1,6 +1,6 @@
 # 치수 측정 API 서버
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, WebSocket, WebSocketDisconnect, Header
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware # CORS 설정을 위해 CORSMiddleware 가져오기
 from fastapi.encoders import jsonable_encoder
@@ -1216,49 +1216,21 @@ async def kakao_callback(code: str = None, error: str = None):
         # 로그 출력도 user_data를 쓰세요
         logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
-        # 프론트엔드로 토큰 전달 (HTML + JavaScript)
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>로그인 성공</title>
-                </head>
-                <body>
-                    <script>
-                        // 1. 토큰 저장
-                        localStorage.setItem('access_token', '{jwt_token}');
-                        
-                        // 2. 사용자 정보 저장 (한글 깨짐 방지 처리)
-                        const userData = {json.dumps(user_data, ensure_ascii=False)};
-                        localStorage.setItem('user', JSON.stringify(userData));
-                        
-                        // 3. 홈 화면(home.html)으로 즉시 이동
-                        window.location.href = 'home.html'; 
-                    </script>
-                </body>
-            </html>
-            """
-        )
+        
+        # 프론트엔드(내 컴퓨터)의 메인 화면 주소
+            frontend_url = "http://127.0.0.1:5500/home.html"
+            
+            # 토큰을 가지고 이동(리다이렉트)
+            return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
         
     except Exception as e:
-        logger.error(f"카카오 콜백 처리 오류: {str(e)}")
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>로그인 실패</title>
-                </head>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>로그인 실패</h2>
-                    <p>오류: {str(e)}</p>
-                    <button onclick="window.location.href='/'">메인으로 돌아가기</button>
-                </body>
-            </html>
-            """,
-            status_code=500
-        )
+    logger.error(f"카카오 콜백 처리 오류: {str(e)}")
+
+    return {
+        "status": "error",
+        "message": "로그인 처리 중 오류 발생",
+        "detail": str(e)
+    }
 
 
 @app.get("/oauth/google/callback")
@@ -1362,56 +1334,20 @@ async def google_callback(code: str = None, error: str = None):
         # 로그 출력도 user_data를 쓰세요
         logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
-        # 프론트엔드로 토큰 전달 (HTML + JavaScript)
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>로그인 성공</title>
-                </head>
-                <body>
-                    <script>
-                        // 1. 토큰 저장
-                        localStorage.setItem('access_token', '{jwt_token}');
-                        
-                        // 2. 사용자 정보 저장 (한글 깨짐 방지 처리)
-                        const userData = {json.dumps(user_data, ensure_ascii=False)};
-                        localStorage.setItem('user', JSON.stringify(userData));
-                        
-                        // 3. 홈 화면(home.html)으로 즉시 이동
-                        window.location.href = 'home.html'; 
-                    </script>
-                </body>
-            </html>
-            """
-        )
+        # 프론트엔드(내 컴퓨터)의 메인 화면 주소
+            frontend_url = "http://127.0.0.1:5500/home.html"
+            
+            # 토큰을 가지고 이동(리다이렉트)
+            return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
         
     except Exception as e:
-        logger.error(f"구글 콜백 처리 오류: {str(e)}")
-        # 프론트엔드로 토큰 전달 (HTML + JavaScript)
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>로그인 성공</title>
-                </head>
-                <body>
-                    <script>
-                        // 1. 토큰 및 사용자 정보 저장
-                        localStorage.setItem('access_token', '{jwt_token}');
-                        const userData = {json.dumps(user_data, ensure_ascii=False)};
-                        localStorage.setItem('user', JSON.stringify(userData));
-                        
-                        // 2. [핵심] 사용자의 로컬 서버 주소로 이동!
-                        // (누가 접속하든 자기 컴퓨터의 5500번 포트로 가라고 명령합니다)
-                        window.location.href = 'http://127.0.0.1:5500/home.html'; 
-                    </script>
-                </body>
-            </html>
-            """
-        )
+    logger.error(f"구글 콜백 처리 오류: {str(e)}")
+
+    return {
+        "status": "error",
+        "message": "로그인 처리 중 오류 발생",
+        "detail": str(e)
+    }
 
 
 @app.get("/oauth/naver/callback")
@@ -1515,49 +1451,20 @@ async def naver_callback(code: str = None, state: str = None, error: str = None)
             })
         logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
-        # 프론트엔드로 토큰 전달 (HTML + JavaScript)
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>로그인 성공</title>
-                </head>
-                <body>
-                    <script>
-                        // 1. 토큰 저장
-                        localStorage.setItem('access_token', '{jwt_token}');
-                        
-                        // 2. 사용자 정보 저장 (한글 깨짐 방지 처리)
-                        const userData = {json.dumps(user_data, ensure_ascii=False)};
-                        localStorage.setItem('user', JSON.stringify(userData));
-                        
-                        // 3. 홈 화면(home.html)으로 즉시 이동
-                        window.location.href = 'home.html'; 
-                    </script>
-                </body>
-            </html>
-            """
-        )
+        # 프론트엔드(내 컴퓨터)의 메인 화면 주소
+            frontend_url = "http://127.0.0.1:5500/home.html"
+            
+            # 토큰을 가지고 이동(리다이렉트)
+            return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
         
     except Exception as e:
-        logger.error(f"네이버 콜백 처리 오류: {str(e)}")
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>로그인 실패</title>
-                </head>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>로그인 실패</h2>
-                    <p>오류: {str(e)}</p>
-                    <button onclick="window.location.href='/'">메인으로 돌아가기</button>
-                </body>
-            </html>
-            """,
-            status_code=500
-        )
+    logger.error(f"네이버 콜백 처리 오류: {str(e)}")
+
+    return {
+        "status": "error",
+        "message": "로그인 처리 중 오류 발생",
+        "detail": str(e)
+    }
 
 
 # ==================== 1단계: 소셜 로그인 ====================
