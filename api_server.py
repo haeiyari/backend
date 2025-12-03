@@ -1216,12 +1216,8 @@ async def kakao_callback(code: str = None, error: str = None):
         # 로그 출력도 user_data를 쓰세요
         logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
-        
-        # 프론트엔드(내 컴퓨터)의 메인 화면 주소
-            frontend_url = "http://127.0.0.1:5500/home.html"
-            
-            # 토큰을 가지고 이동(리다이렉트)
-            return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
+        frontend_url = "http://127.0.0.1:5500/home.html"
+        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
         
     except Exception as e:
     logger.error(f"카카오 콜백 처리 오류: {str(e)}")
@@ -1334,11 +1330,8 @@ async def google_callback(code: str = None, error: str = None):
         # 로그 출력도 user_data를 쓰세요
         logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
-        # 프론트엔드(내 컴퓨터)의 메인 화면 주소
-            frontend_url = "http://127.0.0.1:5500/home.html"
-            
-            # 토큰을 가지고 이동(리다이렉트)
-            return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
+        frontend_url = "http://127.0.0.1:5500/home.html"
+        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
         
     except Exception as e:
     logger.error(f"구글 콜백 처리 오류: {str(e)}")
@@ -1451,11 +1444,8 @@ async def naver_callback(code: str = None, state: str = None, error: str = None)
             })
         logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
         
-        # 프론트엔드(내 컴퓨터)의 메인 화면 주소
-            frontend_url = "http://127.0.0.1:5500/home.html"
-            
-            # 토큰을 가지고 이동(리다이렉트)
-            return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
+        frontend_url = "http://127.0.0.1:5500/home.html"
+        return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success")
         
     except Exception as e:
     logger.error(f"네이버 콜백 처리 오류: {str(e)}")
