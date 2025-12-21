@@ -302,6 +302,19 @@ class OrderFromCartRequest(BaseModel):
     address: str
     payment_method: str = "카드"
 
+# 리뷰 등록 요청
+class ReviewCreateRequest(BaseModel):
+    user_id: int
+    product_id: int
+    rating: int  # 1~5
+    content: Optional[str] = None
+    size_feedback: Optional[int] = None  # 1:작음, 2:적당함, 3:큼
+
+# 사이즈 추천 요청
+class SizeRecommendRequest(BaseModel):
+    user_profile_id: int  # 내 옷장의 profile_id
+    product_id: int  # 비교할 상품 ID
+
 @app.get("/", response_class=HTMLResponse)
 async def root():
     # 루트 경로에서 웹 시작 화면(index.html)을 제공
@@ -869,29 +882,50 @@ async def save_to_closet(
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
 @app.get("/my-closet/{user_id}")
-async def get_my_closet(user_id: int):
+async def get_my_closet(user_id: int, category: Optional[str] = None):
+    """
+    내 옷장 목록 조회 API
     
+    사용자의 저장된 옷 목록을 조회합니다. 카테고리 필터 옵션 제공.
+    """
     try:
-        logger.info(f"내 옷장 조회 요청 - user_id: {user_id}")
+        logger.info(f"내 옷장 조회 요청 - user_id: {user_id}, category: {category}")
         
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
         
-        sql = """
-            SELECT 
-                profile_id,
-                profile_name,
-                profile_image_url,
-                category,
-                top_length, top_shoulder, top_chest, top_sleeve,
-                bottom_length, bottom_waist, bottom_rise, bottom_hip, bottom_thigh, bottom_hem,
-                created_at
-            FROM user_measure_profile
-            WHERE user_id = %s
-            ORDER BY created_at DESC
-        """
+        # 카테고리 필터링
+        if category:
+            sql = """
+                SELECT 
+                    profile_id,
+                    profile_name,
+                    profile_image_url,
+                    category,
+                    top_length, top_shoulder, top_chest, top_sleeve,
+                    bottom_length, bottom_waist, bottom_rise, bottom_hip, bottom_thigh, bottom_hem,
+                    created_at
+                FROM user_measure_profile
+                WHERE user_id = %s AND category = %s
+                ORDER BY created_at DESC
+            """
+            cursor.execute(sql, (user_id, category))
+        else:
+            sql = """
+                SELECT 
+                    profile_id,
+                    profile_name,
+                    profile_image_url,
+                    category,
+                    top_length, top_shoulder, top_chest, top_sleeve,
+                    bottom_length, bottom_waist, bottom_rise, bottom_hip, bottom_thigh, bottom_hem,
+                    created_at
+                FROM user_measure_profile
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+            """
+            cursor.execute(sql, (user_id,))
         
-        cursor.execute(sql, (user_id,))
         profiles = cursor.fetchall()
         
         cursor.close()
@@ -907,6 +941,8 @@ async def get_my_closet(user_id: int):
         # Decimal, datetime 등의 타입을 JSON 직렬화 가능한 형태로 변환
         payload = {
             "user_id": user_id,
+            "category": category,
+            "count": len(profiles),
             "profiles": profiles
         }
         return JSONResponse(content=jsonable_encoder(payload))
@@ -1018,29 +1054,30 @@ async def websocket_mobile(websocket: WebSocket, session_id: str):
         manager.disconnect(session_id, 'mobile')
         logger.info(f"모바일 연결 종료: {session_id}")
 
-
+# 프론트엔드가 /auth/kakao/login-url로 GET 요청을 보내면 실행되는 함수
 @app.get("/auth/kakao/login-url")
 async def get_kakao_login_url():
     
-    client_id = os.getenv("KAKAO_CLIENT_ID", "")
-    redirect_uri = os.getenv(
-        "KAKAO_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/kakao/callback"
+    client_id = os.getenv("KAKAO_CLIENT_ID", "") # 서버 설정 파일(.env)에서 KAKAO_CLIENT_ID(앱 키)와
+    redirect_uri = os.getenv( # KAKAO_REDIRECT_URI를 가져옴
+        "KAKAO_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/kakao/callback" 
     )
 
-    if not client_id:
+    if not client_id: # 만약 client_id가 없다면
         raise HTTPException(
-            status_code=500,
-            detail="KAKAO_CLIENT_ID가 설정되어 있지 않습니다. .env를 확인하세요.",
+            status_code=500, # 500 에러 발생
+            detail="KAKAO_CLIENT_ID가 설정되어 있지 않습니다. .env를 확인하세요.", # 에러 메시지
         )
 
-    login_url = (
+    login_url = ( # 카카오 인증 서버 주소 뒤에 필요한 정보를 붙여 긴 URL을 만듦
         "https://kauth.kakao.com/oauth/authorize"
-        f"?client_id={client_id}"
-        f"&redirect_uri={redirect_uri}"
-        "&response_type=code"
+        f"?client_id={client_id}" # (앱 키)
+        f"&redirect_uri={redirect_uri}" # (돌아올 주소)
+        "&response_type=code" # (인증 코드 받기)
     )
 
-    return {"login_url": login_url}
+    return {"login_url": login_url} # 완성된 로그인 주소를 JSON 형태로 프론트엔드에 반환
+    # 프론트엔드는 이 주소를 받아 사용자를 해당 페이지로 이동
 
 
 @app.get("/auth/google/login-url")
@@ -1095,8 +1132,8 @@ async def get_naver_login_url():
 
 # ==================== 소셜 로그인 콜백 엔드포인트 ====================
 
-@app.get("/oauth/kakao/callback")
-async def kakao_callback(code: str = None, error: str = None):
+@app.get("/oauth/kakao/callback") # 사용자가 카카오 로그인 창에서 로그인을 마치면 카카오가 사용자를 이 주소로 다시 보냄
+async def kakao_callback(code: str = None, error: str = None): # 이때 인증 코드(code)와 에러 메시지(error)를 들고 옴
     
     try:
         logger.info("=" * 50)
@@ -1105,8 +1142,8 @@ async def kakao_callback(code: str = None, error: str = None):
         logger.info(f"받은 error: {error}")
         logger.info("=" * 50)
         
-        if error:
-            logger.error(f"카카오 로그인 오류: {error}")
+        if error: # 사용자가 로그인을 취소했거나 오류가 생겨서 돌아온 경우
+            logger.error(f"카카오 로그인 오류: {error}") # 에러 로그
             return HTMLResponse(
                 content=f"""
                 <html>
@@ -1124,59 +1161,59 @@ async def kakao_callback(code: str = None, error: str = None):
                 status_code=400
             )
         
-        if not code:
-            logger.error("인증 코드가 없습니다.")
-            raise HTTPException(status_code=400, detail="인증 코드가 없습니다.")
+        if not code: # 인증 코드가 없다면
+            logger.error("인증 코드가 없습니다.") # 에러 로그
+            raise HTTPException(status_code=400, detail="인증 코드가 없습니다.") # 400 에러 발생
         
-        # 카카오 액세스 토큰 발급
-        redirect_uri = os.getenv(
+        # 1단계: 토큰 교환
+        redirect_uri = os.getenv( # KAKAO_REDIRECT_URI를 가져옴
             "KAKAO_REDIRECT_URI", "https://backend-z01u.onrender.com/oauth/kakao/callback"
         )
-        logger.info(f"토큰 발급 시도 - redirect_uri: {redirect_uri}")
-        access_token = kakao_auth.get_access_token(code, redirect_uri)
+        logger.info(f"토큰 발급 시도 - redirect_uri: {redirect_uri}") 
+        access_token = kakao_auth.get_access_token(code, redirect_uri) # 가져온 임시 인증 코드를 카카오 서버에 주고, 진짜 사용할 수 있는 액세스 토큰으로 바꿈
         
-        if not access_token:
-            logger.error("카카오 액세스 토큰 발급 실패")
-            raise HTTPException(status_code=400, detail="카카오 토큰 발급 실패")
+        if not access_token: # 액세스 토큰이 없다면
+            logger.error("카카오 액세스 토큰 발급 실패") # 에러 로그
+            raise HTTPException(status_code=400, detail="카카오 토큰 발급 실패") # 400 에러 발생
         
         logger.info("✅ 카카오 액세스 토큰 발급 성공")
         
-        # 사용자 정보 조회
-        user_info = kakao_auth.get_user_info(access_token)
-        if not user_info:
+        # 2단계: 정보 조회
+        user_info = kakao_auth.get_user_info(access_token) # 받은 토큰으로 카카오 서버에 사용자의 이름, 이메일 등의 정보를 받아옴
+        if not user_info: # 사용자 정보가 없다면
             logger.error("카카오 사용자 정보 조회 실패")
-            raise HTTPException(status_code=400, detail="사용자 정보 조회 실패")
+            raise HTTPException(status_code=400, detail="사용자 정보 조회 실패") # 400 에러 발생
         
         logger.info(f"✅ 카카오 사용자 정보 조회 성공: {user_info.get('name', 'Unknown')}")
         
-        # 이메일이 없는 경우 임시 이메일 생성
+        # 카카오 계정에 이메일이 없거나 제공 동의를 안 한 경우
         email = user_info.get("email")
         if not email:
             social_id = user_info.get("id", "unknown")
-            email = f"kakao_{social_id}@no-email.local"
+            email = f"kakao_{social_id}@no-email.local" # 로그인 처리를 위해 'kakao_고유번호@...' 같은 가짜 이메일을 임시로 만듦
             logger.info(f"이메일 없음 - 임시 이메일 생성: {email}")
         
-        # DB 연결 및 사용자 확인/생성
+        # 사용자가 이미 회원이면 그 사람 정보를 씁니다. 그렇지 않으면 새로 회원가입 시킵니다.
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
         
-        # 1. 먼저 이메일로 가입된 회원이 있는지 찾아봅니다.
+        # 사용자의 가입 여부 조회 부분
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         existing_user = cursor.fetchone()
 
         if existing_user:
-            # [상황 A] 이미 가입된 사람이면 -> 그 사람 정보를 씁니다.
+            # 이미 가입된 사람이면 -> 그 사람 정보를 씀
             logger.info(f"기존 회원 로그인: {email}")
             user = existing_user
             
         else:
-            # [상황 B] 가입된 사람이 없으면 -> 새로 회원가입 시킵니다.
+            # 가입된 사람이 없으면 -> 새로 회원가입 시킴
             logger.info(f"신규 회원 가입: {email}")
             sql = """
                 INSERT INTO users (email, name, social_provider, social_id, password, created_at)
                 VALUES (%s, %s, %s, %s, '', NOW())
             """
-            # provider 이름은 함수에 따라 'kakao', 'google', 'naver'로 
+            
             cursor.execute(sql, (email, user_info.get("name"), 'kakao', user_info.get("id")))
             connection.commit()
             
@@ -1193,26 +1230,27 @@ async def kakao_callback(code: str = None, error: str = None):
             "name": user["name"],
             "email": user["email"]
         }
-        
+        # 서비스 안에서 신분을 증명할 자체 토큰(JWT)을 발급
         jwt_token = create_access_token({
                 "user_id": user_data["user_id"], 
                 "email": user_data["email"]
             })
         
-        # 로그 출력
+        # 로그인 성공 로그
         logger.info(f"🎉 로그인 성공! 사용자: {user_data.get('name')} (id: {user_data['user_id']})")
 
         user_name = user_data.get('name', '고객')
         encoded_name = urllib.parse.quote(user_name)
         user_email = user_data.get('email', '')
         
+        # 모든 처리가 끝난 후, 발급한 토큰을 URL에 붙여서 사용자를 프론트엔드 홈 화면(home.html)으로 이동
         frontend_url = "http://127.0.0.1:5500/home.html"
         return RedirectResponse(url=f"{frontend_url}?token={jwt_token}&status=success&name={encoded_name}&email={user_email}")
 
     except Exception as e:
         logger.error(f"카카오 콜백 처리 오류: {str(e)}") 
 
-        return {  # 이것도 탭 눌러서 안으로!
+        return {  # 에러 발생 시 에러 메시지를 반환
         "status": "error",
         "message": "로그인 처리 중 오류 발생",
         "detail": str(e)
@@ -1595,22 +1633,22 @@ async def social_login(request: SocialLoginRequest):
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
 # ==================== 1단계: 로그아웃 ====================
-
+# 로그아웃 요청 수신
 @app.post("/auth/logout")
 async def logout(authorization: Optional[str] = Header(None)):
     
-    try:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="인증 토큰이 없습니다.")
+    try: # 요청에 Bearer 토큰값 형태의 인증 정보가 제대로 들어있는지 검사
+        if not authorization or not authorization.startswith("Bearer "): # 토큰이 없으면 로그아웃 처리를 할 수 없으므로
+            raise HTTPException(status_code=401, detail="인증 토큰이 없습니다.") # 401 에러 발생
         
-        token = authorization.split(" ")[1]
+        token = authorization.split(" ")[1] # 토큰 값을 추출
         
-        # 토큰 블랙리스트에 추가
-        token_blacklist.add(token)
+        # 추출한 토큰을 서버의 블랙리스트에 등록
+        token_blacklist.add(token) 
         
-        logger.info("로그아웃 성공")
+        logger.info("로그아웃 성공") # 로그아웃 처리가 완료되었음을 알림
         
-        return JSONResponse(content={
+        return JSONResponse(content={ 
             "success": True,
             "message": "로그아웃되었습니다."
         })
@@ -1622,24 +1660,25 @@ async def logout(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
 # ==================== 1단계: 비밀번호 재설정 이메일 발송 ====================
-
+# 비밀번호 재설정 요청
 @app.post("/auth/password-reset/request")
 async def request_password_reset(request: PasswordResetRequest):
    
     try:
         logger.info(f"비밀번호 재설정 요청: {request.email}")
         
-        # 1. 사용자 존재 확인
+        # 데이터베이스에 접속하여 작업을 준비 
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
-        
+
+        # 입력받은 이메일이 우리 서비스에 가입된 이메일인지 확인
         cursor.execute("SELECT id, email FROM users WHERE email = %s", (request.email,))
         user = cursor.fetchone()
         
         cursor.close()
         connection.close()
         
-        # 보안: 사용자가 존재하지 않아도 같은 메시지 반환 (이메일 유출 방지)
+        # 보안을 위해 만약 가입되지 않은 이메일이라도 없는 회원입니다라고 알려주지 않음 
         if not user:
             logger.warning(f"존재하지 않는 이메일로 재설정 요청: {request.email}")
             return JSONResponse(content={
@@ -1647,17 +1686,17 @@ async def request_password_reset(request: PasswordResetRequest):
                 "message": "비밀번호 재설정 링크가 이메일로 발송되었습니다."
             })
         
-        # 2. 재설정 토큰 생성
+        # 비밀번호 변경 권한이 담긴 재설정 토큰을 생성
         reset_token = create_reset_token(request.email)
         
-        # 3. 이메일 발송
+        # 생성된 토큰을 포함한 비밀번호 재설정 링크(URL)를 사용자의 이메일로 전송
         app_url = os.getenv("APP_URL", "https://backend-z01u.onrender.com")
         email_sent = send_password_reset_email(request.email, reset_token, app_url)
         
         if not email_sent:
-            logger.warning("이메일 발송 실패 (SendGrid 미설정)")
+            logger.warning("이메일 발송 실패")
         
-        return JSONResponse(content={
+        return JSONResponse(content={ # 이메일 발송 작업이 끝났음을 알림
             "success": True,
             "message": "비밀번호 재설정 링크가 이메일로 발송되었습니다."
         })
@@ -1668,35 +1707,35 @@ async def request_password_reset(request: PasswordResetRequest):
     except Exception as e:
         logger.error(f"비밀번호 재설정 요청 중 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
-
+# 비밀번호 변경 확정 함수
 @app.post("/auth/password-reset/confirm")
 async def confirm_password_reset(request: PasswordChangeRequest):
    
     try:
-        # 1. 토큰 검증
+        # 가져온 토큰이 유효한지 확인하고 그 안에 담긴 이메일 주소를 추출
         email = verify_reset_token(request.token)
         if not email:
-            raise HTTPException(status_code=400, detail="유효하지 않거나 만료된 토큰입니다.")
+            raise HTTPException(status_code=400, detail="유효하지 않거나 만료된 토큰입니다.") #  실패하면 400 에러 발생
         
         logger.info(f"비밀번호 재설정 확정: {email}")
         
-        # 2. 새 비밀번호 해싱
-        new_password_hash = hash_password(request.new_password)
+        # 사용자가 입력한 새 비밀번호를 그대로 저장하지 않고
+        new_password_hash = hash_password(request.new_password) # hash_password 함수를 통해 안전하게 암호화
         
-        # 3. DB 업데이트
+        # DB에서 해당 이메일을 가진 사용자를 찾아
         connection = get_db_connection()
         cursor = connection.cursor()
         
-        cursor.execute(
+        cursor.execute( # 비밀번호 칸을 방금 만든 새 암호문으로 바꿔치기
             "UPDATE users SET password = %s WHERE email = %s",
             (new_password_hash, email)
         )
-        connection.commit()
+        connection.commit() # commit()을 통해 변경 확정
         
         cursor.close()
         connection.close()
         
-        return JSONResponse(content={
+        return JSONResponse(content={ # 모든 절차가 끝났음을 알리는 메시지를 반환
             "success": True,
             "message": "비밀번호가 성공적으로 변경되었습니다."
         })
@@ -1711,50 +1750,51 @@ async def confirm_password_reset(request: PasswordChangeRequest):
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
 # ==================== 2단계: 회원 탈퇴 ====================
-
+# 탈퇴 요청 수신 (DELETE)
 @app.delete("/auth/withdraw/{user_id}")
 async def withdraw_user(user_id: int, authorization: Optional[str] = Header(None)):
     
     try:
-        # 1. 토큰 검증 (본인 확인)
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="인증 토큰이 없습니다.")
+        #  토큰 유무 확인
+        if not authorization or not authorization.startswith("Bearer "): # 요청에 인증 토큰이 붙어있는지 확인
+            raise HTTPException(status_code=401, detail="인증 토큰이 없습니다.") # 토큰이 없거나 형식이 잘못되었다면 401 에러 발생
         
         token = authorization.split(" ")[1]
         payload = decode_token(token)
         
+        # 토큰 속의 주인(user_id)과 탈퇴하려는 대상(user_id)이 일치하는지 확인
         if not payload or payload.get("user_id") != user_id:
             raise HTTPException(status_code=403, detail="본인만 탈퇴할 수 있습니다.")
         
         logger.info(f"회원 탈퇴 요청: user_id={user_id}")
         
-        # 2. DB 연결
+        # 데이터베이스에 접속해서
         connection = get_db_connection()
         cursor = connection.cursor()
         
-        # 3. 사용자 존재 확인
+        # 사용자가 실제로 존재하는지 다시 한번 확인
         cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
-        if not cursor.fetchone():
+        if not cursor.fetchone(): # 이미 탈퇴했거나 없는 계정이면
             cursor.close()
             connection.close()
-            raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+            raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.") # 404 에러 발생
         
-        # 4. 연관 데이터 삭제 (옷장 데이터)
+        # 사용자를 지우기 전에 사용자가 저장했던 옷 치수 데이터를 먼저 지움
         cursor.execute("DELETE FROM user_measure_profile WHERE user_id = %s", (user_id,))
         
-        # 5. 사용자 삭제
+        # 그 다음 사용자 테이블에서 사용자를 완전히 지움
         cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
-        connection.commit()
+        connection.commit() # commit()을 통해 삭제 확정
         
         cursor.close()
         connection.close()
         
-        # 6. 토큰 블랙리스트에 추가
+        # 탈퇴한 사용자가 갖고 있던 토큰을 블랙리스트에 등록
         token_blacklist.add(token)
         
         logger.info(f"회원 탈퇴 완료: user_id={user_id}")
         
-        return JSONResponse(content={
+        return JSONResponse(content={ # 모든 절차가 끝났음을 알리는 메시지를 반환
             "success": True,
             "message": "회원 탈퇴가 완료되었습니다."
         })
@@ -1769,17 +1809,17 @@ async def withdraw_user(user_id: int, authorization: Optional[str] = Header(None
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
 # ==================== 카테고리 목록 조회 ====================
-
+# 카테고리 조회 API
 @app.get("/categories")
 async def get_categories():
     
     try:
         logger.info("카테고리 목록 조회 요청")
 
-        connection = get_db_connection()
-        cursor = connection.cursor(dictionary=True)
+        connection = get_db_connection() # 데이터베이스에 접속하고
+        cursor = connection.cursor(dictionary=True) # 결과를 딕셔너리 형태(Key: Value)로 받기 위한 커서를 준비
 
-        # 필요에 따라 정렬 기준은 수정 가능 (예: sort_order 컬럼이 있는 경우)
+        # SELECT * FROM categories` 명령어로 카테고리 테이블의 모든 데이터를 가져옴
         cursor.execute("SELECT * FROM categories")
         categories = cursor.fetchall()
 
@@ -1788,10 +1828,10 @@ async def get_categories():
 
         logger.info(f"카테고리 목록 조회 완료: {len(categories)}개")
 
-        return JSONResponse(content={
+        return JSONResponse(content={ # 가져온 목록을 JSON 형식으로 변환해서 프론트엔드에 보냄
             "success": True,
             "count": len(categories),
-            "categories": jsonable_encoder(categories)
+            "categories": jsonable_encoder(categories) # jsonable_encoder: DB 데이터를 JSON으로 바꿀 때 생기는 호환성 문제 해결
         })
 
     except Error as e:
@@ -1803,14 +1843,14 @@ async def get_categories():
 
 
 # ==================== 2단계: 상품 검색 ====================
-
+# 상품 검색 API
 @app.get("/products/search")
 async def search_products(
-    keyword: str,
-    category: Optional[str] = None,
-    min_price: Optional[float] = None,
-    max_price: Optional[float] = None,
-    limit: int = 20
+    keyword: str, # 검색 키워드
+    category: Optional[str] = None, # 카테고리 필터
+    min_price: Optional[float] = None, # 최소 가격 필터
+    max_price: Optional[float] = None, # 최대 가격 필터
+    limit: int = 20 # 결과 개수 제한
 ):
     
     try:
@@ -1861,14 +1901,14 @@ async def search_products(
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
 # ==================== 상품 목록 조회 ====================
-
+# 상품 목록 조회 API
 @app.get("/products")
 async def get_products(
-    page: int = 1,
-    limit: int = 20,
-    category_id: Optional[int] = None,
-    sort_by: str = "created_at",
-    order: str = "desc"
+    page: int = 1, # 페이지 번호
+    limit: int = 20, # 페이지당 상품 개수
+    category_id: Optional[int] = None, # 전체상품 보여주기
+    sort_by: str = "created_at", # 정렬 기준 (날짜순)
+    order: str = "desc" # 정렬 기준 (내림차순)
 ):
     
     try:
@@ -1949,17 +1989,17 @@ async def get_products(
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
 # ==================== 상품 상세 조회 ====================
-
+# 상품 상세 조회 API
 @app.get("/products/{product_id}")
-async def get_product_detail(product_id: int):
+async def get_product_detail(product_id: int): # 상품 아이디
     
     try:
-        logger.info(f"상품 상세 조회: product_id={product_id}")
+        logger.info(f"상품 상세 조회: product_id={product_id}") # 상품 상세 조회 로그
         
-        connection = get_db_connection()
-        cursor = connection.cursor(dictionary=True)
+        connection = get_db_connection() # 데이터베이스에 접속하고
+        cursor = connection.cursor(dictionary=True) # 결과를 딕셔너리 형태(Key: Value)로 받기 위한 커서를 준비
         
-        # 1. 기본 상품 정보 조회
+        # 상품 테이블에서 해당 상품 아이디를 가진 상품의 정보를 조회
         cursor.execute("""
             SELECT p.*, c.name as category_name
             FROM products p
@@ -1967,14 +2007,14 @@ async def get_product_detail(product_id: int):
             WHERE p.id = %s
         """, (product_id,))
         
-        product = cursor.fetchone()
+        product = cursor.fetchone() # 조회된 상품 정보를 변수에 저장
         
         if not product:
             cursor.close()
             connection.close()
-            raise HTTPException(status_code=404, detail="상품을 찾을 수 없습니다.")
+            raise HTTPException(status_code=404, detail="상품을 찾을 수 없습니다.") # 상품이 없으면 404 에러 발생
         
-        # 2. 사이즈 옵션 조회
+        # 상품 사이즈 옵션 테이블에서 해당 상품 아이디를 가진 상품의 사이즈 옵션 정보를 조회
         cursor.execute("""
             SELECT size_option_id, option_name, stock_quantity
             FROM product_size_option
@@ -2037,8 +2077,8 @@ async def get_product_detail(product_id: int):
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
 # ==================== 장바구니(Cart) ====================
-
-@app.post("/cart")
+# 장바구니 담기 API
+@app.post("/cart") # 프론트엔드가 상품 ID와 수량을 보내면 이 함수가 실행
 async def add_to_cart(request: CartItemCreateRequest):
     
     try:
@@ -2047,20 +2087,20 @@ async def add_to_cart(request: CartItemCreateRequest):
             f"product_id={request.product_id}, quantity={request.quantity}"
         )
 
-        if request.quantity < 1:
+        if request.quantity < 1: # 수량이 1개 미만인지 확인
             raise HTTPException(status_code=400, detail="수량은 1 이상이어야 합니다.")
 
-        connection = get_db_connection()
+        connection = get_db_connection() 
         cursor = connection.cursor(dictionary=True)
 
-        # 1. 사용자 존재 확인
+        # DB에서 해당 사용자가 진짜 회원인지
         cursor.execute("SELECT id FROM users WHERE id = %s", (request.user_id,))
         if not cursor.fetchone():
             cursor.close()
             connection.close()
             raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
 
-        # 2. 상품 존재 확인
+        # 해당 상품이 실제로 존재하고 판매 중인지 확인
         cursor.execute("SELECT id, stock_quantity, price, name FROM products WHERE id = %s", (request.product_id,))
         product = cursor.fetchone()
         if not product:
@@ -2068,19 +2108,19 @@ async def add_to_cart(request: CartItemCreateRequest):
             connection.close()
             raise HTTPException(status_code=404, detail="상품을 찾을 수 없습니다.")
 
-        # 3. 기존 장바구니 항목 확인
+        # 이미 장바구니에 똑같은 상품을 담아뒀는지 확인
         cursor.execute(
-            "SELECT id, quantity FROM cart WHERE user_id = %s AND product_id = %s",
+            "SELECT id, quantity FROM cart WHERE user_id = %s AND product_id = %s", 
             (request.user_id, request.product_id),
         )
         existing = cursor.fetchone()
 
-        if existing:
-            new_quantity = existing["quantity"] + request.quantity
+        if existing: # 이미 담긴 상품이라면
+            new_quantity = existing["quantity"] + request.quantity # 기존 수량에 더해서 총수량을 계산
             if new_quantity > product["stock_quantity"]:
                 cursor.close()
                 connection.close()
-                raise HTTPException(
+                raise HTTPException( # 이때 재고보다 많이 담게 되면 에러 발생
                     status_code=400,
                     detail=f"재고 부족: 최대 {product['stock_quantity']}개까지 담을 수 있습니다.",
                 )
@@ -2091,16 +2131,16 @@ async def add_to_cart(request: CartItemCreateRequest):
             )
             cart_id = existing["id"]
             quantity = new_quantity
-        else:
-            if request.quantity > product["stock_quantity"]:
+        else: # 처음 담는 상품이라면
+            if request.quantity > product["stock_quantity"]: 
                 cursor.close()
                 connection.close()
-                raise HTTPException(
+                raise HTTPException( 
                     status_code=400,
                     detail=f"재고 부족: 최대 {product['stock_quantity']}개까지 담을 수 있습니다.",
                 )
 
-            cursor.execute(
+            cursor.execute( # 장바구니 테이블에 새로운 항목 추가
                 """
                 INSERT INTO cart (user_id, product_id, quantity)
                 VALUES (%s, %s, %s)
@@ -2338,8 +2378,8 @@ async def delete_cart_item(cart_id: int):
 
 
 # ==================== 위시리스트(Wishlist) ====================
-
-@app.post("/wishlist")
+# 위시리스트 추가 API
+@app.post("/wishlist") # 사용자가 상품 페이지에서 찜 버튼을 누르면 이 함수가 실행
 async def add_to_wishlist(request: WishlistCreateRequest):
     
     try:
@@ -2351,36 +2391,36 @@ async def add_to_wishlist(request: WishlistCreateRequest):
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
 
-        # 1. 사용자 존재 확인
+        # DB에서 해당 회원이 존재하는지
         cursor.execute("SELECT id FROM users WHERE id = %s", (request.user_id,))
         if not cursor.fetchone():
             cursor.close()
             connection.close()
             raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
 
-        # 2. 상품 존재 확인
+        # 찜하려는 상품이 실제로 존재하는지 확인
         cursor.execute(
             "SELECT id, name, price FROM products WHERE id = %s",
             (request.product_id,),
         )
-        product = cursor.fetchone()
+        product = cursor.fetchone() 
         if not product:
             cursor.close()
             connection.close()
             raise HTTPException(status_code=404, detail="상품을 찾을 수 없습니다.")
 
-        # 3. 이미 존재하는지 확인
+        # 이미 위시리스트에 담아둔 상품인지 확인
         cursor.execute(
             "SELECT id FROM wishlist WHERE user_id = %s AND product_id = %s",
             (request.user_id, request.product_id),
         )
         existing = cursor.fetchone()
 
-        if existing:
+        if existing: # 이미 찜한 상품이라면 아무것도 하지 않고
             wishlist_id = existing["id"]
             created_new = False
         else:
-            cursor.execute(
+            cursor.execute( # 처음 찜하는 상품이라면 DB에 새로 저장
                 """
                 INSERT INTO wishlist (user_id, product_id)
                 VALUES (%s, %s)
@@ -2396,7 +2436,7 @@ async def add_to_wishlist(request: WishlistCreateRequest):
 
         logger.info(f"위시리스트 추가/유지 완료 - wishlist_id={wishlist_id}")
 
-        return JSONResponse(
+        return JSONResponse( # 처리가 완료되었음을 알림
             content={
                 "success": True,
                 "wishlist_id": wishlist_id,
@@ -2868,6 +2908,711 @@ async def get_order_detail(order_id: int):
     except Exception as e:
         logger.error(f"주문 상세 조회 중 오류: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
+
+
+# ==================== 사이즈 추천 ====================
+
+@app.post("/products/{product_id}/recommend-size")
+async def recommend_size(product_id: int, user_profile_id: int):
+    """
+    사이즈 추천 API
+    
+    사용자의 옷장에 저장된 옷 치수와 상품의 실측 치수를 비교하여
+    가장 적합한 사이즈를 추천합니다.
+    """
+    try:
+        logger.info(
+            f"사이즈 추천 요청 - product_id={product_id}, "
+            f"user_profile_id={user_profile_id}"
+        )
+
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        # 1. 사용자의 옷 치수 정보 가져오기
+        cursor.execute(
+            """
+            SELECT 
+                profile_id,
+                profile_name,
+                category,
+                top_length, top_shoulder, top_chest, top_sleeve,
+                bottom_length, bottom_waist, bottom_rise, bottom_hip, bottom_thigh, bottom_hem
+            FROM user_measure_profile
+            WHERE profile_id = %s
+            """,
+            (user_profile_id,)
+        )
+        user_profile = cursor.fetchone()
+
+        if not user_profile:
+            cursor.close()
+            connection.close()
+            raise HTTPException(
+                status_code=404, 
+                detail="사용자 프로필을 찾을 수 없습니다."
+            )
+
+        # 2. 상품 정보 및 카테고리 확인
+        cursor.execute(
+            """
+            SELECT p.id, p.name, p.category_id, c.name as category_name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE p.id = %s
+            """,
+            (product_id,)
+        )
+        product = cursor.fetchone()
+
+        if not product:
+            cursor.close()
+            connection.close()
+            raise HTTPException(
+                status_code=404, 
+                detail="상품을 찾을 수 없습니다."
+            )
+
+        # 3. 상품의 모든 사이즈 옵션 및 실측 정보 가져오기
+        cursor.execute(
+            """
+            SELECT 
+                pso.size_option_id,
+                pso.option_name,
+                pso.stock_quantity,
+                prm.category,
+                prm.top_length, prm.top_shoulder, prm.top_chest, prm.top_sleeve,
+                prm.bottom_length, prm.bottom_waist, prm.bottom_rise, 
+                prm.bottom_hip, prm.bottom_thigh, prm.bottom_hem
+            FROM product_size_option pso
+            LEFT JOIN product_real_measure prm ON pso.size_option_id = prm.size_option_id
+            WHERE pso.product_id = %s
+            ORDER BY pso.size_option_id
+            """,
+            (product_id,)
+        )
+        size_options = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+
+        if not size_options:
+            raise HTTPException(
+                status_code=404, 
+                detail="해당 상품의 사이즈 정보를 찾을 수 없습니다."
+            )
+
+        # 4. 카테고리 일치 여부 확인
+        user_category = user_profile['category']
+        product_category = size_options[0]['category'] if size_options[0].get('category') else None
+
+        if not product_category:
+            raise HTTPException(
+                status_code=400,
+                detail="상품의 카테고리 정보가 없습니다."
+            )
+
+        if user_category != product_category:
+            raise HTTPException(
+                status_code=400,
+                detail=f"카테고리가 일치하지 않습니다. 사용자: {user_category}, 상품: {product_category}"
+            )
+
+        # 5. 각 사이즈별로 적합도 계산
+        recommendations = []
+        
+        for size_option in size_options:
+            score_details = {}
+            total_score = 0
+            count = 0
+
+            if user_category == "상의":
+                # 상의 비교 항목
+                measurements = [
+                    ('length', 'top_length', '총장', 3.0),      # 가중치 3.0
+                    ('shoulder', 'top_shoulder', '어깨', 2.5),  # 가중치 2.5
+                    ('chest', 'top_chest', '가슴', 3.0),        # 가중치 3.0
+                    ('sleeve', 'top_sleeve', '소매', 2.0)       # 가중치 2.0
+                ]
+            else:  # 하의
+                measurements = [
+                    ('length', 'bottom_length', '총장', 2.5),
+                    ('waist', 'bottom_waist', '허리', 3.5),
+                    ('rise', 'bottom_rise', '밑위', 2.0),
+                    ('hip', 'bottom_hip', '엉덩이', 3.0),
+                    ('thigh', 'bottom_thigh', '허벅지', 2.5),
+                    ('hem', 'bottom_hem', '밑단', 1.5)
+                ]
+
+            # 각 치수 항목별 비교
+            for key, field, label, weight in measurements:
+                user_value = user_profile.get(field)
+                product_value = size_option.get(field)
+
+                if user_value and product_value:
+                    user_value = float(user_value)
+                    product_value = float(product_value)
+                    
+                    # 차이 계산
+                    diff = abs(product_value - user_value)
+                    
+                    # 점수 계산 (차이가 적을수록 높은 점수)
+                    # 0cm 차이: 100점, 1cm: 90점, 2cm: 80점, 3cm: 70점...
+                    item_score = max(0, 100 - (diff * 10))
+                    
+                    # 가중치 적용
+                    weighted_score = item_score * weight
+                    
+                    total_score += weighted_score
+                    count += weight
+                    
+                    score_details[label] = {
+                        "user_measurement": round(user_value, 1),
+                        "product_measurement": round(product_value, 1),
+                        "difference": round(diff, 1),
+                        "score": round(item_score, 1),
+                        "weight": weight
+                    }
+
+            # 평균 점수 계산
+            final_score = (total_score / count) if count > 0 else 0
+
+            # 재고 여부 확인
+            in_stock = size_option['stock_quantity'] > 0
+
+            recommendations.append({
+                "size_option_id": size_option['size_option_id'],
+                "size_name": size_option['option_name'],
+                "fit_score": round(final_score, 1),
+                "fit_level": _get_fit_level(final_score),
+                "score_details": score_details,
+                "in_stock": in_stock,
+                "stock_quantity": size_option['stock_quantity']
+            })
+
+        # 6. 점수순으로 정렬
+        recommendations.sort(key=lambda x: x['fit_score'], reverse=True)
+
+        # 7. 최고 점수 사이즈를 추천으로 표시
+        if recommendations:
+            recommendations[0]['is_recommended'] = True
+            for rec in recommendations[1:]:
+                rec['is_recommended'] = False
+
+        logger.info(
+            f"사이즈 추천 완료 - {len(recommendations)}개 사이즈 분석, "
+            f"추천: {recommendations[0]['size_name'] if recommendations else 'N/A'}"
+        )
+
+        return JSONResponse(
+            content={
+                "success": True,
+                "product_id": product_id,
+                "product_name": product['name'],
+                "user_profile_id": user_profile_id,
+                "user_profile_name": user_profile['profile_name'],
+                "category": user_category,
+                "recommendations": recommendations,
+                "message": f"총 {len(recommendations)}개의 사이즈를 분석했습니다."
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Error as e:
+        logger.error(f"사이즈 추천 DB 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {str(e)}")
+    except Exception as e:
+        logger.error(f"사이즈 추천 중 오류: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
+
+
+def _get_fit_level(score: float) -> str:
+    """적합도 점수를 텍스트로 변환"""
+    if score >= 90:
+        return "매우 적합"
+    elif score >= 80:
+        return "적합"
+    elif score >= 70:
+        return "보통"
+    elif score >= 60:
+        return "약간 작음/큼"
+    else:
+        return "맞지 않음"
+
+
+# ==================== 리뷰(Reviews) ====================
+
+@app.post("/reviews")
+async def create_review(request: ReviewCreateRequest):
+    """
+    리뷰 등록 API
+    
+    사용자가 구매한 상품에 대한 리뷰를 작성합니다.
+    """
+    try:
+        logger.info(
+            f"리뷰 등록 요청 - user_id={request.user_id}, "
+            f"product_id={request.product_id}, rating={request.rating}"
+        )
+
+        # 입력값 검증
+        if request.rating < 1 or request.rating > 5:
+            raise HTTPException(
+                status_code=400, 
+                detail="별점은 1~5 사이의 값이어야 합니다."
+            )
+
+        if request.size_feedback and (request.size_feedback < 1 or request.size_feedback > 3):
+            raise HTTPException(
+                status_code=400,
+                detail="사이즈 체감은 1(작음), 2(적당함), 3(큼) 중 하나여야 합니다."
+            )
+
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        # 사용자 존재 확인
+        cursor.execute("SELECT id FROM users WHERE id = %s", (request.user_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            connection.close()
+            raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+
+        # 상품 존재 확인
+        cursor.execute(
+            "SELECT id, name FROM products WHERE id = %s", 
+            (request.product_id,)
+        )
+        product = cursor.fetchone()
+        if not product:
+            cursor.close()
+            connection.close()
+            raise HTTPException(status_code=404, detail="상품을 찾을 수 없습니다.")
+
+        # 리뷰 등록
+        cursor.execute(
+            """
+            INSERT INTO reviews (user_id, product_id, rating, content, size_feedback)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                request.user_id,
+                request.product_id,
+                request.rating,
+                request.content,
+                request.size_feedback
+            )
+        )
+        connection.commit()
+        review_id = cursor.lastrowid
+
+        cursor.close()
+        connection.close()
+
+        logger.info(f"리뷰 등록 완료 - review_id={review_id}")
+
+        return JSONResponse(
+            content={
+                "success": True,
+                "review_id": review_id,
+                "message": "리뷰가 등록되었습니다.",
+                "product_name": product["name"]
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Error as e:
+        logger.error(f"리뷰 등록 DB 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {str(e)}")
+    except Exception as e:
+        logger.error(f"리뷰 등록 중 오류: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
+
+
+@app.get("/reviews")
+async def get_reviews(
+    product_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+    rating: Optional[int] = None,
+    page: int = 1,
+    limit: int = 20
+):
+    """
+    리뷰 조회 API
+    
+    특정 상품의 리뷰 목록 또는 특정 사용자가 작성한 리뷰를 조회합니다.
+    """
+    try:
+        logger.info(
+            f"리뷰 조회 요청 - product_id={product_id}, "
+            f"user_id={user_id}, rating={rating}, page={page}"
+        )
+
+        # 페이지 검증
+        if page < 1:
+            page = 1
+        if limit < 1 or limit > 100:
+            limit = 20
+
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        # 동적 SQL 쿼리 생성
+        where_conditions = []
+        params = []
+
+        if product_id:
+            where_conditions.append("r.product_id = %s")
+            params.append(product_id)
+
+        if user_id:
+            where_conditions.append("r.user_id = %s")
+            params.append(user_id)
+
+        if rating:
+            where_conditions.append("r.rating = %s")
+            params.append(rating)
+
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+
+        # 전체 리뷰 개수 조회
+        count_sql = f"""
+            SELECT COUNT(*) as total 
+            FROM reviews r
+            WHERE {where_clause}
+        """
+        cursor.execute(count_sql, tuple(params))
+        total_count = cursor.fetchone()["total"]
+
+        # 리뷰 목록 조회 (사용자명, 상품명 JOIN)
+        offset = (page - 1) * limit
+
+        sql = f"""
+            SELECT 
+                r.id AS review_id,
+                r.user_id,
+                u.name AS user_name,
+                r.product_id,
+                p.name AS product_name,
+                r.rating,
+                r.content,
+                r.size_feedback,
+                r.created_at
+            FROM reviews r
+            JOIN users u ON r.user_id = u.id
+            JOIN products p ON r.product_id = p.id
+            WHERE {where_clause}
+            ORDER BY r.created_at DESC
+            LIMIT %s OFFSET %s
+        """
+        params.extend([limit, offset])
+
+        cursor.execute(sql, tuple(params))
+        reviews = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+
+        # 날짜 문자열로 변환
+        for review in reviews:
+            if review.get("created_at"):
+                review["created_at"] = review["created_at"].strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+            
+            # 사이즈 체감 텍스트 추가
+            size_feedback_map = {1: "작음", 2: "적당함", 3: "큼"}
+            if review.get("size_feedback"):
+                review["size_feedback_text"] = size_feedback_map.get(
+                    review["size_feedback"], ""
+                )
+
+        # 페이지 정보 계산
+        total_pages = (total_count + limit - 1) // limit
+
+        logger.info(f"리뷰 조회 완료 - {len(reviews)}개 (전체 {total_count}개)")
+
+        return JSONResponse(
+            content={
+                "success": True,
+                "reviews": jsonable_encoder(reviews),
+                "pagination": {
+                    "current_page": page,
+                    "total_pages": total_pages,
+                    "total_count": total_count,
+                    "limit": limit,
+                    "has_next": page < total_pages,
+                    "has_prev": page > 1
+                },
+                "filters": {
+                    "product_id": product_id,
+                    "user_id": user_id,
+                    "rating": rating
+                }
+            }
+        )
+
+    except Error as e:
+        logger.error(f"리뷰 조회 DB 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {str(e)}")
+    except Exception as e:
+        logger.error(f"리뷰 조회 중 오류: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
+
+
+@app.get("/reviews/{review_id}")
+async def get_review_detail(review_id: int):
+    """
+    리뷰 상세 조회 API
+    
+    특정 리뷰의 상세 정보를 조회합니다.
+    """
+    try:
+        logger.info(f"리뷰 상세 조회 요청 - review_id={review_id}")
+
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT 
+                r.id AS review_id,
+                r.user_id,
+                u.name AS user_name,
+                r.product_id,
+                p.name AS product_name,
+                p.price,
+                r.rating,
+                r.content,
+                r.size_feedback,
+                r.created_at
+            FROM reviews r
+            JOIN users u ON r.user_id = u.id
+            JOIN products p ON r.product_id = p.id
+            WHERE r.id = %s
+            """,
+            (review_id,)
+        )
+
+        review = cursor.fetchone()
+
+        if not review:
+            cursor.close()
+            connection.close()
+            raise HTTPException(status_code=404, detail="리뷰를 찾을 수 없습니다.")
+
+        cursor.close()
+        connection.close()
+
+        # 날짜 문자열로 변환
+        if review.get("created_at"):
+            review["created_at"] = review["created_at"].strftime("%Y-%m-%d %H:%M:%S")
+
+        # 사이즈 체감 텍스트 추가
+        size_feedback_map = {1: "작음", 2: "적당함", 3: "큼"}
+        if review.get("size_feedback"):
+            review["size_feedback_text"] = size_feedback_map.get(
+                review["size_feedback"], ""
+            )
+
+        # 가격 변환
+        if review.get("price"):
+            review["price"] = float(review["price"])
+
+        logger.info(f"리뷰 상세 조회 완료 - review_id={review_id}")
+
+        return JSONResponse(
+            content={
+                "success": True,
+                "review": jsonable_encoder(review)
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Error as e:
+        logger.error(f"리뷰 상세 조회 DB 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {str(e)}")
+    except Exception as e:
+        logger.error(f"리뷰 상세 조회 중 오류: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
+
+
+@app.delete("/reviews/{review_id}")
+async def delete_review(review_id: int, user_id: int):
+    """
+    리뷰 삭제 API
+    
+    본인이 작성한 리뷰를 삭제합니다.
+    """
+    try:
+        logger.info(f"리뷰 삭제 요청 - review_id={review_id}, user_id={user_id}")
+
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        # 리뷰 존재 및 소유자 확인
+        cursor.execute(
+            "SELECT id, user_id FROM reviews WHERE id = %s",
+            (review_id,)
+        )
+        review = cursor.fetchone()
+
+        if not review:
+            cursor.close()
+            connection.close()
+            raise HTTPException(status_code=404, detail="리뷰를 찾을 수 없습니다.")
+
+        # 본인 확인
+        if review["user_id"] != user_id:
+            cursor.close()
+            connection.close()
+            raise HTTPException(
+                status_code=403, 
+                detail="본인이 작성한 리뷰만 삭제할 수 있습니다."
+            )
+
+        # 리뷰 삭제
+        cursor.execute("DELETE FROM reviews WHERE id = %s", (review_id,))
+        connection.commit()
+
+        cursor.close()
+        connection.close()
+
+        logger.info(f"리뷰 삭제 완료 - review_id={review_id}")
+
+        return JSONResponse(
+            content={
+                "success": True,
+                "review_id": review_id,
+                "message": "리뷰가 삭제되었습니다."
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Error as e:
+        logger.error(f"리뷰 삭제 DB 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {str(e)}")
+    except Exception as e:
+        logger.error(f"리뷰 삭제 중 오류: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
+
+
+@app.get("/products/{product_id}/reviews/summary")
+async def get_product_review_summary(product_id: int):
+    """
+    상품 리뷰 요약 API
+    
+    특정 상품의 평균 평점, 리뷰 개수, 별점별 분포, 사이즈 체감 통계를 제공합니다.
+    """
+    try:
+        logger.info(f"상품 리뷰 요약 조회 - product_id={product_id}")
+
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        # 상품 존재 확인
+        cursor.execute("SELECT id, name FROM products WHERE id = %s", (product_id,))
+        product = cursor.fetchone()
+        if not product:
+            cursor.close()
+            connection.close()
+            raise HTTPException(status_code=404, detail="상품을 찾을 수 없습니다.")
+
+        # 평균 평점 및 리뷰 개수
+        cursor.execute(
+            """
+            SELECT 
+                COUNT(*) as review_count,
+                AVG(rating) as avg_rating
+            FROM reviews
+            WHERE product_id = %s
+            """,
+            (product_id,)
+        )
+        summary = cursor.fetchone()
+
+        # 별점별 분포
+        cursor.execute(
+            """
+            SELECT 
+                rating,
+                COUNT(*) as count
+            FROM reviews
+            WHERE product_id = %s
+            GROUP BY rating
+            ORDER BY rating DESC
+            """,
+            (product_id,)
+        )
+        rating_distribution = cursor.fetchall()
+
+        # 사이즈 체감 통계
+        cursor.execute(
+            """
+            SELECT 
+                size_feedback,
+                COUNT(*) as count
+            FROM reviews
+            WHERE product_id = %s AND size_feedback IS NOT NULL
+            GROUP BY size_feedback
+            ORDER BY size_feedback
+            """,
+            (product_id,)
+        )
+        size_feedback_stats = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+
+        # 평균 평점 소수점 처리
+        avg_rating = float(summary["avg_rating"]) if summary["avg_rating"] else 0.0
+        avg_rating = round(avg_rating, 1)
+
+        # 별점별 분포를 딕셔너리로 변환
+        rating_dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        for item in rating_distribution:
+            rating_dist[item["rating"]] = item["count"]
+
+        # 사이즈 체감 통계 딕셔너리로 변환
+        size_feedback_map = {1: "작음", 2: "적당함", 3: "큼"}
+        size_stats = []
+        for item in size_feedback_stats:
+            size_stats.append({
+                "value": item["size_feedback"],
+                "text": size_feedback_map.get(item["size_feedback"], ""),
+                "count": item["count"]
+            })
+
+        logger.info(
+            f"상품 리뷰 요약 조회 완료 - "
+            f"평균 평점: {avg_rating}, 리뷰 수: {summary['review_count']}"
+        )
+
+        return JSONResponse(
+            content={
+                "success": True,
+                "product_id": product_id,
+                "product_name": product["name"],
+                "review_count": summary["review_count"],
+                "avg_rating": avg_rating,
+                "rating_distribution": rating_dist,
+                "size_feedback_stats": size_stats
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Error as e:
+        logger.error(f"리뷰 요약 조회 DB 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {str(e)}")
+    except Exception as e:
+        logger.error(f"리뷰 요약 조회 중 오류: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
+
 
 if __name__ == "__main__":
     # 서버 실행

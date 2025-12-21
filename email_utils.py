@@ -21,7 +21,7 @@ FROM_EMAIL = os.getenv("FROM_EMAIL", SMTP_USER or "noreply@example.com")
 
 
 def _send_email(to_email: str, subject: str, html_body: str) -> bool:
-    """공통 SMTP 이메일 발송 함수"""
+    
     if not SMTP_USER or not SMTP_PASSWORD:
         logger.warning("SMTP_USER 또는 SMTP_PASSWORD가 설정되어 있지 않습니다. 이메일을 발송할 수 없습니다.")
         return False
